@@ -1,0 +1,101 @@
+[33mdf9221e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/notification[m[33m)[m HEAD@{0}: commit: xong
+[33mf34e0f8[m[33m ([m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{1}: checkout: moving from develop to feature/notification
+[33mf34e0f8[m[33m ([m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{2}: pull origin develop: Fast-forward
+[33m2733262[m HEAD@{3}: checkout: moving from feature/dashboard-owner to develop
+[33m2e55add[m[33m ([m[1;31morigin/feature/dashboard-owner[m[33m, [m[1;32mfeature/dashboard-owner[m[33m)[m HEAD@{4}: commit: xong
+[33m2733262[m HEAD@{5}: checkout: moving from develop to feature/dashboard-owner
+[33m2733262[m HEAD@{6}: pull origin develop: Fast-forward
+[33me51dc24[m HEAD@{7}: checkout: moving from feature/dashboard-admin to develop
+[33mf9297e3[m[33m ([m[1;31morigin/feature/dashboard-admin[m[33m, [m[1;32mfeature/dashboard-admin[m[33m)[m HEAD@{8}: commit: xong
+[33me51dc24[m HEAD@{9}: checkout: moving from develop to feature/dashboard-admin
+[33me51dc24[m HEAD@{10}: pull origin develop: Fast-forward
+[33m7876610[m HEAD@{11}: checkout: moving from feature/fb-gg to develop
+[33mf537f3e[m[33m ([m[1;32mfeature/fb-gg[m[33m)[m HEAD@{12}: commit: fix liên kết
+[33m2e3f70e[m HEAD@{13}: commit: xong
+[33mf9f7225[m HEAD@{14}: commit: check mật khẩu
+[33ma89b67b[m HEAD@{15}: commit: trigger hủy liên kết
+[33mffe4d6a[m HEAD@{16}: commit: thêm phần liên kết tài khoản
+[33mee69e89[m HEAD@{17}: commit: trigger nếu tài khoản fb không có email
+[33m61346a1[m HEAD@{18}: commit: hoàn thành cơ bản login fb/gg
+[33m903c887[m HEAD@{19}: commit: thêm dependency
+[33m7876610[m HEAD@{20}: checkout: moving from develop to feature/fb-gg
+[33m7876610[m HEAD@{21}: checkout: moving from develop to develop
+[33m7876610[m HEAD@{22}: pull origin develop: Fast-forward
+[33m7405745[m HEAD@{23}: checkout: moving from feature/room-validate to develop
+[33mc934c2a[m[33m ([m[1;31morigin/feature/room-validate[m[33m, [m[1;32mfeature/room-validate[m[33m)[m HEAD@{24}: commit: validate - room
+[33m7405745[m HEAD@{25}: checkout: moving from develop to feature/room-validate
+[33m7405745[m HEAD@{26}: checkout: moving from develop to develop
+[33m7405745[m HEAD@{27}: pull origin develop: Fast-forward
+[33m7ddcffd[m HEAD@{28}: checkout: moving from feature/fix-validate to develop
+[33m988f130[m[33m ([m[1;31morigin/feature/fix-validate[m[33m, [m[1;32mfeature/fix-validate[m[33m)[m HEAD@{29}: commit: check trùng tên
+[33m7ddcffd[m HEAD@{30}: checkout: moving from develop to feature/fix-validate
+[33m7ddcffd[m HEAD@{31}: pull origin develop: Fast-forward
+[33m13ef67f[m HEAD@{32}: checkout: moving from feature/fix-city to develop
+[33ma147109[m[33m ([m[1;31morigin/feature/fix-city[m[33m, [m[1;32mfeature/fix-city[m[33m)[m HEAD@{33}: commit: fix xong
+[33m13ef67f[m HEAD@{34}: checkout: moving from develop to feature/fix-city
+[33m13ef67f[m HEAD@{35}: checkout: moving from develop to develop
+[33m13ef67f[m HEAD@{36}: pull origin develop: Fast-forward
+[33m3ddf699[m HEAD@{37}: checkout: moving from feature/update-review to develop
+[33m724d10a[m[33m ([m[1;32mfeature/update-review[m[33m)[m HEAD@{38}: commit: wip
+[33me2487fd[m HEAD@{39}: commit: wip
+[33m593e2a3[m HEAD@{40}: commit: đánh giá, sửa đánh giá
+[33m3ddf699[m HEAD@{41}: checkout: moving from develop to feature/update-review
+[33m3ddf699[m HEAD@{42}: checkout: moving from develop to develop
+[33m3ddf699[m HEAD@{43}: pull origin develop: Fast-forward
+[33m9693f5d[m HEAD@{44}: checkout: moving from feature/booking-schedule to develop
+[33m4177c1a[m[33m ([m[1;31morigin/feature/booking-schedule[m[33m, [m[1;32mfeature/booking-schedule[m[33m)[m HEAD@{45}: commit: update tìm phòng trống
+[33me33b235[m HEAD@{46}: commit: xong
+[33m9693f5d[m HEAD@{47}: checkout: moving from develop to feature/booking-schedule
+[33m9693f5d[m HEAD@{48}: pull origin develop: Fast-forward
+[33mbae7b32[m HEAD@{49}: checkout: moving from develop to develop
+[33mbae7b32[m HEAD@{50}: pull origin develop: Fast-forward
+[33ma70734e[m HEAD@{51}: checkout: moving from feature/membership to develop
+[33ma932ea3[m[33m ([m[1;31morigin/feature/membership[m[33m, [m[1;32mfeature/membership[m[33m)[m HEAD@{52}: checkout: moving from develop to feature/membership
+[33ma70734e[m HEAD@{53}: pull origin develop: Fast-forward
+[33mf5cfec9[m HEAD@{54}: checkout: moving from feature/policy to develop
+[33m218eec0[m[33m ([m[1;31morigin/feature/policy[m[33m, [m[1;32mfeature/policy[m[33m)[m HEAD@{55}: commit: chi tiết phòng
+[33mf5cfec9[m HEAD@{56}: checkout: moving from develop to feature/policy
+[33mf5cfec9[m HEAD@{57}: pull origin develop: Fast-forward
+[33m07328ca[m HEAD@{58}: checkout: moving from feature/search-adv to develop
+[33m3ddc764[m[33m ([m[1;31morigin/feature/search-adv[m[33m, [m[1;32mfeature/search-adv[m[33m)[m HEAD@{59}: commit: hoàn thành
+[33me6b7d39[m HEAD@{60}: pull origin develop: Merge made by the 'ort' strategy.
+[33m042931f[m HEAD@{61}: commit: update tìm kiếm
+[33m07328ca[m HEAD@{62}: checkout: moving from develop to feature/search-adv
+[33m07328ca[m HEAD@{63}: pull origin develop: Fast-forward
+[33m5a00bb7[m HEAD@{64}: checkout: moving from feature/api-booking-2 to develop
+[33m284a3c3[m[33m ([m[1;31morigin/feature/api-booking-2[m[33m, [m[1;32mfeature/api-booking-2[m[33m)[m HEAD@{65}: commit: update giao diện + chức năng
+[33ma01431f[m HEAD@{66}: commit: hoàn thành booking/owner
+[33m93fc11e[m HEAD@{67}: commit: hoàn thành luồng thnah toán -> hoàn tiền
+[33m5bbcb2f[m HEAD@{68}: commit: sửa lại code payment-booking
+[33m5a00bb7[m HEAD@{69}: checkout: moving from develop to feature/api-booking-2
+[33m5a00bb7[m HEAD@{70}: checkout: moving from develop to develop
+[33m5a00bb7[m HEAD@{71}: pull origin develop: Fast-forward
+[33m6df0953[m HEAD@{72}: checkout: moving from feature/api-booking to develop
+[33m3648838[m[33m ([m[1;31morigin/feature/api-booking[m[33m, [m[1;32mfeature/api-booking[m[33m)[m HEAD@{73}: commit: hoàn thành hoàn tiền
+[33m642a3ca[m HEAD@{74}: commit: hoàn tiền
+[33m8698509[m HEAD@{75}: commit: luồng khách yêu cầu hoàn tiền
+[33me0dd429[m HEAD@{76}: commit: lịch sử thanh toán + đặt phòng
+[33maa6a067[m HEAD@{77}: commit: booking + payment
+[33m6df0953[m HEAD@{78}: checkout: moving from develop to feature/api-booking
+[33m6df0953[m HEAD@{79}: pull origin develop: Fast-forward
+[33m1fe75e4[m HEAD@{80}: checkout: moving from feature/maps-2 to develop
+[33me5369d2[m[33m ([m[1;32mfeature/maps-2[m[33m)[m HEAD@{81}: commit: hoàn thiện maps
+[33mc3a0208[m HEAD@{82}: commit: hoàn thành sơ bộ chức năng maps
+[33m1fe75e4[m HEAD@{83}: checkout: moving from develop to feature/maps-2
+[33m1fe75e4[m HEAD@{84}: pull origin develop: Fast-forward
+[33mfe589d7[m HEAD@{85}: checkout: moving from feature/maps to develop
+[33mcb2a2c4[m[33m ([m[1;32mfeature/maps[m[33m)[m HEAD@{86}: commit: thêm 1 số trường vào property
+[33m8886c8a[m HEAD@{87}: commit: wip
+[33mfe589d7[m HEAD@{88}: checkout: moving from develop to feature/maps
+[33mfe589d7[m HEAD@{89}: checkout: moving from develop to develop
+[33mfe589d7[m HEAD@{90}: pull origin develop: Fast-forward
+[33m22955d5[m HEAD@{91}: checkout: moving from feature/complete-api-4 to develop
+[33m58fa193[m[33m ([m[1;31morigin/feature/complete-api-4[m[33m, [m[1;32mfeature/complete-api-4[m[33m)[m HEAD@{92}: commit: xong api cho phần chi tiết cơ sở lưu trú
+[33m9cc2ab2[m HEAD@{93}: commit: wip
+[33m1191304[m HEAD@{94}: pull origin develop: Merge made by the 'ort' strategy.
+[33m3dd070f[m HEAD@{95}: commit: upload avt-done
+[33mc4ce5ba[m HEAD@{96}: commit: upload avt
+[33m22955d5[m HEAD@{97}: checkout: moving from develop to feature/complete-api-4
+[33m22955d5[m HEAD@{98}: pull origin develop: Fast-forward
+[33m546ad50[m HEAD@{99}: checkout: moving from feature/complete-api-3 to develop
+[

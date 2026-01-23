@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Cơ sở bị từ chối - TravelMate</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
+        /* HEADER CHUẨN MỚI */
+        .header { background-color: #ffffff; border-bottom: 3px solid #00a8e8; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
+        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+        /* CONTENT */
+        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
+        .content h2 { color: #dc3545; /* Đỏ */ margin-bottom: 10px; margin-top: 0; font-size: 24px; }
+        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
+        .reason-box { font-size: 14px; background: #fcf1f1; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb; line-height: 1.8; }
+        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
+        @media (max-width: 600px) { .content { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+    <div class="content">
+        <h2>❌ Xin chào <strong th:text="${ownerName}">Chủ cơ sở</strong>,</h2>
+        <p>Chúng tôi rất tiếc phải thông báo, cơ sở lưu trú của bạn, <strong><span th:text="${propertyName}">[Tên cơ sở]</span></strong>, đã bị <strong>TỪ CHỐI</strong>.</p>
+        <p>Cơ sở này sẽ không được hiển thị trên hệ thống. Vui lòng kiểm tra lý do và cập nhật lại thông tin cơ sở.</p>
+        <div class="reason-box">
+            <strong style="color: #dc3545;">Lý do từ chối:</strong>
+            <p style="margin: 5px 0 0 0; color: #555;" th:text="${reason}">Ảnh cơ sở không rõ nét.</p>
+        </div>
+    </div>
+    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
+</div>
+</body>
+</html>

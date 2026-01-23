@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo mở lại hoạt động</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { background-color: #2e7d32; padding: 20px; text-align: center; } /* Màu xanh lá */
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+        .content { padding: 30px; color: #333; line-height: 1.6; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: #2e7d32; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>TravelMate Notification</h1>
+    </div>
+    <div class="content">
+        <p>Xin chào <strong th:text="${ownerName}">Chủ sở hữu</strong>,</p>
+        <p>Tin vui! Cơ sở lưu trú <strong><span th:text="${propertyName}">Tên KS</span></strong> của bạn đã được quản trị viên <strong>mở lại hoạt động</strong>.</p>
+        <p>Hiện tại, khách hàng đã có thể tìm kiếm và đặt phòng trở lại.</p>
+        <p>Chúc bạn kinh doanh thuận lợi!</p>
+        <a href="#" class="btn">Truy cập trang quản lý</a>
+    </div>
+</div>
+</body>
+</html>

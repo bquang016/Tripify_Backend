@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo tạm dừng hoạt động cơ sở lưu trú</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background-color: #d32f2f; padding: 20px; text-align: center; } /* Màu đỏ cảnh báo */
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+        .content { padding: 30px; color: #333333; line-height: 1.6; }
+        .info-box { background-color: #fff5f5; border-left: 4px solid #d32f2f; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .label { font-weight: bold; color: #555; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #888; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: #d32f2f; color: #ffffff; text-decoration: none; border-radius: 5px; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>TravelMate Notification</h1>
+    </div>
+    <div class="content">
+        <p>Xin chào <strong th:text="${ownerName}">Chủ sở hữu</strong>,</p>
+
+        <p>Chúng tôi rất tiếc phải thông báo rằng cơ sở lưu trú của bạn đã bị <strong>tạm dừng hoạt động</strong> trên hệ thống TravelMate do vi phạm chính sách hoặc yêu cầu từ quản trị viên.</p>
+
+        <div class="info-box">
+            <p><span class="label">Cơ sở lưu trú:</span> <span th:text="${propertyName}">Tên khách sạn</span></p>
+            <p><span class="label">Lý do:</span> <span th:text="${reason}" style="color: #d32f2f; font-weight: bold;">Lý do chi tiết</span></p>
+        </div>
+
+        <p>Trong thời gian này, cơ sở của bạn sẽ không hiển thị trên kết quả tìm kiếm và không thể nhận đặt phòng mới. Các đặt phòng hiện tại (nếu có) có thể cần được xử lý thủ công.</p>
+
+        <p>Nếu bạn cho rằng đây là sự nhầm lẫn hoặc muốn giải quyết vấn đề để mở lại hoạt động, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi hoặc trả lời email này.</p>
+
+        <p>Trân trọng,<br>Đội ngũ TravelMate</p>
+    </div>
+    <div class="footer">
+        <p>&copy; 2025 TravelMate System. All rights reserved.</p>
+        <p>Đây là email tự động, vui lòng không trả lời trực tiếp email này nếu không cần thiết.</p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Xác nhận đặt phòng - TravelMate</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
+        /* HEADER CHUẨN MỚI */
+        .header { background-color: #ffffff; border-bottom: 3px solid #00a8e8; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
+        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+        /* CONTENT */
+        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
+        .content h2 { color: #006494; margin-bottom: 10px; margin-top: 0; font-size: 24px; }
+        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
+        .info-box { font-size: 14px; color: #333; background: #f1faff; padding: 20px; border-radius: 8px; border: 1px solid #d1ecf1; line-height: 1.8; }
+        .btn-action { display: inline-block; background-color: #00a8e8; color: #ffffff !important; text-decoration: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; margin-top: 20px; text-align: center; transition: all 0.3s ease; }
+        .btn-action:hover { background-color: #1b8dc4; }
+        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
+        @media (max-width: 600px) { .content { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+    <div class="content">
+        <h2>Xin chào <strong th:text="${username}">Khách hàng</strong>,</h2>
+        <p>Cảm ơn bạn đã lựa chọn <strong>TravelMate</strong>. Chúng tôi vui mừng thông báo đơn đặt phòng của bạn đã được <strong>XÁC NHẬN THÀNH CÔNG</strong>.</p>
+        <div class="info-box">
+            <strong style="color: #006494; font-size: 16px;">Thông tin đặt phòng:</strong>
+            <hr style="border: 0; border-top: 1px dashed #d1ecf1; margin: 10px 0;">
+            <strong>Mã đặt phòng:</strong> <span th:text="${bookingId}" style="font-weight: bold;">#CODE</span><br>
+            <strong>Ngày nhận phòng:</strong> <span th:text="${checkInDate}">01/01/2024</span><br>
+            <strong>Ngày trả phòng:</strong> <span th:text="${checkOutDate}">05/01/2024</span><br>
+            <strong>Trạng thái:</strong> <span style="color: #28a745; font-weight: bold;">✅ Đã xác nhận</span>
+        </div>
+        <p>Bạn có thể xem chi tiết đơn đặt phòng, hướng dẫn check-in và quản lý chuyến đi bằng cách nhấn vào nút bên dưới:</p>
+        <div style="text-align: center;">
+            <a th:href="${bookingUrl}" class="btn-action">Xem Chi Tiết Đặt Phòng</a>
+        </div>
+        <p style="margin-top: 25px; font-size: 13px; color: #888;">Nếu bạn không thực hiện yêu cầu này hoặc có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ ngay lập tức.</p>
+    </div>
+    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
+</div>
+</body>
+</html>

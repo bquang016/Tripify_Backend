@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo mở lại phòng</title>
+    <style>
+        /* Tương tự bên trên */
+        body { font-family: Arial, sans-serif; background-color: #f6f6f6; }
+        .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header { background-color: #2e7d32; padding: 20px; text-align: center; }
+        .header h1 { color: #fff; margin: 0; }
+        .content { padding: 30px; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>TravelMate Notification</h1>
+    </div>
+    <div class="content">
+        <p>Xin chào <strong th:text="${ownerName}">Chủ sở hữu</strong>,</p>
+        <p>Phòng <strong><span th:text="${roomName}">Tên phòng</span></strong> tại cơ sở <span th:text="${propertyName}">KS</span> đã được mở khóa.</p>
+        <p>Trạng thái hiện tại: <strong>Đang hoạt động (Available)</strong>.</p>
+    </div>
+</div>
+</body>
+</html>

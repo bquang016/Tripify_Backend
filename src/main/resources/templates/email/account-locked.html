@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Thông báo khóa tài khoản - TravelMate</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
+
+        /* HEADER - Đổi viền sang màu đỏ để cảnh báo */
+        .header { background-color: #ffffff; border-bottom: 3px solid #d9534f; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
+        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+
+        /* CONTENT */
+        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
+        .content h2 { color: #d9534f; margin-bottom: 10px; margin-top: 0; font-size: 24px; }
+        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
+
+        /* INFO BOX - Nền đỏ nhạt */
+        .info-box { font-size: 14px; color: #333; background: #fff5f5; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb; line-height: 1.8; }
+
+        /* BUTTON - Màu đỏ */
+        .btn-action { display: inline-block; background-color: #d9534f; color: #ffffff !important; text-decoration: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; margin-top: 20px; text-align: center; transition: all 0.3s ease; }
+        .btn-action:hover { background-color: #c9302c; }
+
+        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
+        @media (max-width: 600px) { .content { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+    <div class="content">
+        <h2>Xin chào <strong th:text="${name}">Người dùng</strong>,</h2>
+        <p>Chúng tôi rất tiếc phải thông báo rằng tài khoản <strong>TravelMate</strong> của bạn đã bị <strong>KHÓA</strong> (hoặc tạm ngưng) do vi phạm chính sách của hệ thống.</p>
+
+        <div class="info-box">
+            <strong style="color: #d9534f; font-size: 16px;">Chi tiết vi phạm:</strong>
+            <hr style="border: 0; border-top: 1px dashed #f5c6cb; margin: 10px 0;">
+            <strong>Trạng thái:</strong> <span style="color: #d9534f; font-weight: bold;">⛔ Đã khóa (Banned)</span><br>
+            <strong>Lý do:</strong> <span th:text="${reason}" style="font-weight: bold;">Vi phạm điều khoản cộng đồng</span>
+        </div>
+
+        <p>Nếu bạn cho rằng đây là sự nhầm lẫn hoặc muốn khiếu nại, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi bằng cách nhấn vào nút bên dưới:</p>
+
+        <div style="text-align: center;">
+            <a href="http://localhost:5173/help" class="btn-action">Liên hệ Hỗ trợ</a>
+        </div>
+
+        <p style="margin-top: 25px; font-size: 13px; color: #888;">Lưu ý: Đây là email thông báo tự động. Vui lòng không trả lời trực tiếp email này nếu không cần thiết.</p>
+    </div>
+    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
+</div>
+</body>
+</html>

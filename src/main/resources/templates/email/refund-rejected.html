@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yêu cầu Hoàn tiền bị từ chối - TravelMate</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f9fb;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e3eef3;
+        }
+        /* --- HEADER (ĐÃ SỬA: BÁM SÁT TUYỆT ĐỐI) --- */
+        .header {
+            background-color: #ffffff;
+            /* Đổi màu border từ xanh dương sang cam/đỏ để báo hiệu thông báo quan trọng/từ chối */
+            border-bottom: 3px solid #dc3545;
+            text-align: center;
+
+            padding: 45px 45px;
+            line-height: 0;
+            font-size: 0;
+        }
+        .header a {
+            display: block;
+            border: 0;
+            text-decoration: none;
+        }
+        .header img {
+            width: 300px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border: 0;
+        }
+        /* ------------------------------------------ */
+
+        .content {
+            padding: 35px 30px;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+        .content h2 {
+            color: #dc3545; /* Đổi màu tiêu đề sang màu đỏ để phù hợp với thông báo từ chối */
+            margin-bottom: 10px;
+            margin-top: 0;
+            font-size: 24px;
+            line-height: 1.4;
+        }
+        .content p {
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #444;
+        }
+        .info-box {
+            font-size: 14px;
+            color: #333;
+            /* Đổi màu nền sang màu vàng nhạt hoặc màu cảnh báo */
+            background: #fff8f5;
+            padding: 20px;
+            border-radius: 8px;
+            /* Đổi màu border sang màu cảnh báo */
+            border: 1px solid #f5c6cb;
+            line-height: 1.8;
+        }
+        .total-amount {
+            /* Dùng để làm nổi bật lý do từ chối */
+            font-size: 16px;
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f7f9fa;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #888;
+            border-top: 1px solid #e0e8ec;
+            line-height: 1.5;
+        }
+        @media (max-width: 600px) {
+            .content { padding: 25px 20px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+    <div class="content">
+
+        <h2>Thông báo từ chối hoàn tiền</h2>
+
+        <p>
+            Xin chào <strong th:text="${username}">Khách hàng</strong>,
+        </p>
+
+        <p>
+            Yêu cầu hoàn tiền cho đơn đặt phòng <strong>#<span th:text="${bookingId}"></span></strong> của bạn đã được đội ngũ TravelMate xem xét. Rất tiếc phải thông báo, yêu cầu này đã bị **từ chối**.
+        </p>
+
+        <div class="info-box">
+            <strong style="color: #dc3545;">Chi tiết từ chối:</strong><br>
+            <hr style="border: 0; border-top: 1px dashed #f5c6cb; margin: 10px 0;">
+            <span>Mã đặt phòng:</span> <strong>#<span th:text="${bookingId}">123</span></strong><br>
+            <span>Lý do từ chối từ Admin:</span> <br>
+            <span class="total-amount" th:text="${reason}">Lý do từ chối chi tiết sẽ được hiển thị ở đây.</span>
+        </div>
+
+        <p style="margin-top: 20px;">
+            Nếu bạn có bất kỳ thắc mắc nào về quyết định này hoặc cần thêm thông tin, vui lòng liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi để được giải đáp.
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p>
+    </div>
+</div>
+</body>
+</html>

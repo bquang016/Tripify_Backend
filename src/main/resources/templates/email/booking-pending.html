@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vui lòng thanh toán - TravelMate</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f9fb;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e3eef3;
+    }
+    /* --- HEADER (ĐÃ SỬA: BÁM SÁT TUYỆT ĐỐI) --- */
+    .header {
+      background-color: #ffffff;
+      border-bottom: 3px solid #00a8e8;
+      text-align: center;
+
+      padding: 45px 45px;
+      line-height: 0;
+      font-size: 0;
+    }
+    .header a {
+      display: block;
+      border: 0;
+      text-decoration: none;
+    }
+    .header img {
+      /* ✅ 3. TĂNG SIZE LOGO: Đã tăng lên 280px cho to rõ */
+      width: 300px;
+      max-width: 100%;
+      height: auto;
+      /* ✅ 4. DISPLAY BLOCK: Loại bỏ khoảng trắng mặc định dưới chân ảnh inline */
+      display: block;
+      margin: 0 auto;
+      border: 0;
+    }
+    /* ------------------------------------------ */
+
+    .content {
+      padding: 35px 30px;
+      line-height: 1.7;
+      font-size: 15px; /* Reset lại font-size vì ở header đã set về 0 */
+    }
+    .content h2 {
+      color: #006494;
+      margin-bottom: 10px;
+      margin-top: 0;
+      font-size: 24px;
+      line-height: 1.4;
+    }
+    .content p {
+      margin-bottom: 20px;
+      font-size: 15px;
+      color: #444;
+    }
+    .info-box {
+      font-size: 14px;
+      color: #333;
+      background: #f1faff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #d1ecf1;
+      line-height: 1.8;
+    }
+    .total-amount {
+      font-size: 18px;
+      color: #dc3545;
+      font-weight: bold;
+    }
+    .footer {
+      background-color: #f7f9fa;
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #888;
+      border-top: 1px solid #e0e8ec;
+      line-height: 1.5; /* Reset line-height cho footer */
+    }
+    @media (max-width: 600px) {
+      .content { padding: 25px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+  <div class="content">
+
+    <h2>Xin chào <strong th:text="${username}">Khách hàng</strong>,</h2>
+
+    <p>
+      Cảm ơn bạn đã đặt phòng tại <strong>TravelMate</strong>. Đơn đặt phòng <strong>#<span th:text="${bookingId}"></span></strong> của bạn đang ở trạng thái <strong>Chờ thanh toán</strong>.
+    </p>
+
+    <p>
+      Để giữ phòng và nhận xác nhận đặt chỗ ngay lập tức, vui lòng hoàn tất bước thanh toán trên hệ thống.
+    </p>
+
+    <div class="info-box">
+      <strong style="color: #006494;">Chi tiết thanh toán:</strong><br>
+      <hr style="border: 0; border-top: 1px dashed #d1ecf1; margin: 10px 0;">
+      <span>Mã đặt phòng:</span> <strong th:text="${bookingId}">#123</strong><br>
+      <span>Tổng tiền cần thanh toán:</span> <br>
+      <span class="total-amount" th:text="${totalPrice} + ' VND'">0 VND</span>
+    </div>
+
+    <p style="margin-top: 20px;">
+      <em>Lưu ý: Đơn đặt phòng sẽ tự động hủy nếu không được thanh toán trong thời gian quy định.</em>
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p>
+  </div>
+</div>
+</body>
+</html>

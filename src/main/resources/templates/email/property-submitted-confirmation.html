@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Xác nhận nộp đơn cơ sở - TravelMate</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
+        /* HEADER CHUẨN MỚI */
+        .header { background-color: #ffffff; border-bottom: 3px solid #00a8e8; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
+        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+        /* CONTENT */
+        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
+        .content h2 { color: #006494; margin-bottom: 10px; margin-top: 0; font-size: 24px; }
+        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
+        .info-box { font-size: 14px; color: #333; background: #f1faff; padding: 20px; border-radius: 8px; border: 1px solid #d1ecf1; line-height: 1.8; }
+        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
+        @media (max-width: 600px) { .content { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+        <div class="content">
+        <h2>Xin chào <strong th:text="${ownerName}">Chủ cơ sở</strong>,</h2>
+        <p>Chúng tôi xác nhận đã nhận được đơn đăng ký cơ sở lưu trú của bạn:</p>
+        <div class="info-box">
+            <strong style="color: #006494;">Tên cơ sở:</strong><br>
+            <span th:text="${propertyName}">[Tên cơ sở]</span>
+        </div>
+        <p style="margin-top: 20px;">Đơn của bạn hiện đang ở trạng thái <strong>Chờ xử lý (PENDING)</strong>. Admin sẽ xem xét và phản hồi (Duyệt/Từ chối) trong thời gian sớm nhất.</p>
+    </div>
+    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
+</div>
+</body>
+</html>

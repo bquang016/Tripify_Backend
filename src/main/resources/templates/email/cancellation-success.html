@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Hoàn tiền thành công - TravelMate</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
+
+        .header { background-color: #ffffff; border-bottom: 3px solid #00a8e8; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
+        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+
+        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
+        .content h2 { color: #28a745; margin-bottom: 10px; margin-top: 0; font-size: 24px; } /* Màu xanh lá khẳng định thành công */
+        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
+
+        .info-box { font-size: 14px; color: #333; background: #f1faf1; padding: 20px; border-radius: 8px; border: 1px solid #c8e6c9; line-height: 1.8; }
+
+        .amount-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .highlight-green { color: #28a745; font-weight: bold; font-size: 16px; }
+        .status-success { color: #28a745; font-weight: bold; }
+
+        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+    </div>
+    <div class="content">
+        <h2>Hoàn tiền thành công</h2>
+        <p>Xin chào <strong th:text="${username}">Khách hàng</strong>,</p>
+        <p>TravelMate xin thông báo: Yêu cầu hoàn tiền cho đơn đặt phòng của bạn đã được <strong>CHẤP NHẬN</strong> và thực hiện thành công.</p>
+
+        <div class="info-box">
+            <strong style="color: #2e7d32; font-size: 16px;">Chi tiết giao dịch:</strong>
+            <hr style="border: 0; border-top: 1px dashed #a5d6a7; margin: 10px 0;">
+
+            <div style="margin-bottom: 10px;">
+                <strong>Mã đặt phòng:</strong> <span th:text="${bookingId}" style="font-weight: bold;">#CODE</span>
+            </div>
+
+            <div class="amount-row">
+                <span>Số tiền hoàn lại:</span>
+                <span class="highlight-green" th:text="${refundAmount} + ' VND'">0 VND</span>
+            </div>
+
+            <div class="amount-row">
+                <span>Phí hủy (đã trừ):</span>
+                <span>- <span th:text="${penaltyAmount}">0</span> VND</span>
+            </div>
+
+            <br>
+            <strong>Trạng thái:</strong> <span class="status-success">✅ Đã chuyển khoản</span>
+        </div>
+
+        <p style="margin-top: 25px;">
+            <strong>Lưu ý quan trọng:</strong><br>
+            Hệ thống đã thực hiện lệnh chuyển tiền. Tùy thuộc vào ngân hàng thụ hưởng, số tiền có thể nổi trong tài khoản của bạn <strong>ngay lập tức</strong> hoặc mất từ <strong>1-3 ngày làm việc</strong>.
+        </p>
+
+        <p>Vui lòng kiểm tra sao kê ngân hàng của bạn. Nếu sau thời gian trên bạn chưa nhận được tiền, hãy liên hệ ngay với chúng tôi.</p>
+    </div>
+    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
+</div>
+</body>
+</html>
