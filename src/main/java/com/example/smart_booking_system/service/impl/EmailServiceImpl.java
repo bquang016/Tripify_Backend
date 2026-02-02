@@ -167,7 +167,7 @@ public class EmailServiceImpl implements EmailService {
         // --- 👇 PHẦN QUAN TRỌNG: FIX LỖI HIỂN THỊ TRÊN MÁY TÍNH ---
         try {
             // 1. Tìm file ảnh
-            String path = "static/images/logo-travelmate.png";
+            String path = "static/images/LogoTriptify.png";
             ClassPathResource logoResource = new ClassPathResource(path);
 
             if (logoResource.exists()) {

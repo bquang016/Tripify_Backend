@@ -23,20 +23,18 @@
         }
         .header {
             background: linear-gradient(135deg, #0060df 0%, #0099e5 100%);
-            padding: 30px;
+            padding: 10px 20px;
             text-align: center;
         }
-        .header h1 {
-            color: #ffffff;
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 1px;
+        .header img {
+            height: 80px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
         }
         /* Fallback text if logo doesn't load */
         .brand-name {
-            display: inline-block;
-            vertical-align: middle;
+            display: none;
         }
         .content {
             padding: 40px 30px;
@@ -99,9 +97,7 @@
     <div class="container">
         <!-- Header với Gradient xanh hiện đại -->
         <div class="header">
-            <div class="brand-name">
-                <img src="cid:logoImage" alt="Tripify Logo" style="height: 50px; width: auto;">
-            </div>
+            <img src="cid:logoImage" alt="Tripify Logo">
         </div>
 
         <div class="content">
