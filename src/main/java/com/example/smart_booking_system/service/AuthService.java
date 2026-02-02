@@ -25,4 +25,6 @@ public interface AuthService {
     User getCurrentUser();
 
     void sendOtp(String email);
+
+    boolean verifyOtp(String email, String code);
 }

@@ -337,10 +337,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String email) {
-        // Kiểm tra xem email có tồn tại không
-        userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + email));
-
         // Tạo mã OTP 6 số
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
 
@@ -350,5 +346,29 @@ public class AuthServiceImpl implements AuthService {
 
         // Gửi email
         emailService.sendOtpEmail(email, otpCode);
+    }
+
+    @Override
+    public boolean verifyOtp(String email, String code) {
+        OtpInfo info = otpStorage.get(email);
+        
+        if (info == null) {
+            return false;
+        }
+
+        // Kiểm tra hết hạn
+        if (System.currentTimeMillis() > info.getExpiryTime()) {
+            otpStorage.remove(email);
+            return false;
+        }
+
+        // Kiểm tra khớp mã
+        boolean isValid = info.getCode().equals(code);
+        
+        if (isValid) {
+            otpStorage.remove(email); // Xóa sau khi dùng xong
+        }
+        
+        return isValid;
     }
 }
