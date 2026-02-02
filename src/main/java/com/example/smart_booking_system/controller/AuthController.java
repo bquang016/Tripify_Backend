@@ -81,6 +81,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Verification email sent. Please check your inbox."));
     }
 
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequest request) {
+        authService.sendOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("OTP has been sent to your email."));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);

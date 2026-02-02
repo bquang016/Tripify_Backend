@@ -23,4 +23,6 @@ public interface AuthService {
     void unlinkSocialAccount(String userId, String providerName);
     void createPassword(String userId, String newPassword);
     User getCurrentUser();
+
+    void sendOtp(String email);
 }

@@ -385,4 +385,17 @@ public class EmailServiceImpl implements EmailService {
             System.err.println("❌ Failed to send refund rejection email: " + e.getMessage());
         }
     }
+
+    @Override
+    public void sendOtpEmail(String toEmail, String otpCode) {
+        try {
+            String subject = "Mã OTP xác thực - Smart Booking";
+            Context context = new Context();
+            context.setVariable("otpCode", otpCode);
+            String htmlContent = templateEngine.process("email/otp-email", context);
+            sendHtmlEmailInternal(toEmail, subject, htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Failed to send OTP email", e);
+        }
+    }
 }
