@@ -39,5 +39,5 @@ public interface EmailService {
     void sendAccountLockedEmail(String to, String name, String reason);
     void sendRefundRejectionEmail(String toEmail, String fullName, String bookingId, String rejectionReason);
 
-    void sendOtpEmail(String toEmail, String otpCode);
+    void sendOtpEmail(String toEmail, String otpCode, com.example.smart_booking_system.enums.OtpType type);
 }

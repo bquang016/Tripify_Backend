@@ -336,7 +336,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void sendOtp(String email) {
+    public void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type) {
         // Tạo mã OTP 6 số
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
 
@@ -345,7 +345,7 @@ public class AuthServiceImpl implements AuthService {
         otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
 
         // Gửi email
-        emailService.sendOtpEmail(email, otpCode);
+        emailService.sendOtpEmail(email, otpCode, type);
     }
 
     @Override
