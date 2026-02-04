@@ -167,7 +167,7 @@ public class EmailServiceImpl implements EmailService {
         // --- 👇 PHẦN QUAN TRỌNG: FIX LỖI HIỂN THỊ TRÊN MÁY TÍNH ---
         try {
             // 1. Tìm file ảnh
-            String path = "static/images/logo-travelmate.png";
+            String path = "static/images/LogoTriptify.png";
             ClassPathResource logoResource = new ClassPathResource(path);
 
             if (logoResource.exists()) {
@@ -383,6 +383,36 @@ public class EmailServiceImpl implements EmailService {
 
         } catch (Exception e) {
             System.err.println("❌ Failed to send refund rejection email: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendOtpEmail(String toEmail, String otpCode, com.example.smart_booking_system.enums.OtpType type) {
+        try {
+            String subject = "Mã OTP xác thực - Smart Booking";
+            String templateName = "email/otp-email"; // Default fallback
+
+            switch (type) {
+                case REGISTER:
+                    templateName = "email/otp-registration";
+                    subject = "Mã OTP đăng ký tài khoản - Smart Booking";
+                    break;
+                case FORGOT_PASSWORD:
+                    templateName = "email/otp-forgot-password";
+                    subject = "Mã OTP đặt lại mật khẩu - Smart Booking";
+                    break;
+                case TWO_FACTOR_AUTH:
+                    templateName = "email/otp-2fa";
+                    subject = "Mã OTP xác thực 2 bước - Smart Booking";
+                    break;
+            }
+
+            Context context = new Context();
+            context.setVariable("otpCode", otpCode);
+            String htmlContent = templateEngine.process(templateName, context);
+            sendHtmlEmailInternal(toEmail, subject, htmlContent);
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Failed to send OTP email", e);
         }
     }
 }

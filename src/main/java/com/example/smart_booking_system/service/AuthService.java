@@ -23,4 +23,8 @@ public interface AuthService {
     void unlinkSocialAccount(String userId, String providerName);
     void createPassword(String userId, String newPassword);
     User getCurrentUser();
+
+    void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type);
+
+    boolean verifyOtp(String email, String code);
 }

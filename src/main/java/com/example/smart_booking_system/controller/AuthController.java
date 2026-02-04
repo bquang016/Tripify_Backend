@@ -81,6 +81,22 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Verification email sent. Please check your inbox."));
     }
 
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequest request) {
+        authService.sendOtp(request.getEmail(), request.getType());
+        return ResponseEntity.ok(ApiResponse.success("OTP has been sent to your email."));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        boolean isValid = authService.verifyOtp(request.getEmail(), request.getOtpCode());
+        if (isValid) {
+            return ResponseEntity.ok(ApiResponse.success("OTP verification successful."));
+        } else {
+            throw new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn.");
+        }
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);

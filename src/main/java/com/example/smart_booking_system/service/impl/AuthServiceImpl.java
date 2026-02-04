@@ -26,9 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +44,17 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    
+    // Thay thế Redis bằng Map trong RAM
+    private final Map<String, OtpInfo> otpStorage = new ConcurrentHashMap<>();
+
+    // Class nội bộ lưu thông tin OTP
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    private static class OtpInfo {
+        private String code;
+        private long expiryTime;
+    }
 
     @Autowired
     private SocialAccountRepository socialAccountRepository;
@@ -319,5 +333,42 @@ public class AuthServiceImpl implements AuthService {
         String email = authentication.getName(); // Lấy email từ token
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại."));
+    }
+
+    @Override
+    public void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type) {
+        // Tạo mã OTP 6 số
+        String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+
+        // Lưu vào Map (thay vì Redis) - Hết hạn sau 5 phút (300.000 ms)
+        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000);
+        otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
+
+        // Gửi email
+        emailService.sendOtpEmail(email, otpCode, type);
+    }
+
+    @Override
+    public boolean verifyOtp(String email, String code) {
+        OtpInfo info = otpStorage.get(email);
+        
+        if (info == null) {
+            return false;
+        }
+
+        // Kiểm tra hết hạn
+        if (System.currentTimeMillis() > info.getExpiryTime()) {
+            otpStorage.remove(email);
+            return false;
+        }
+
+        // Kiểm tra khớp mã
+        boolean isValid = info.getCode().equals(code);
+        
+        if (isValid) {
+            otpStorage.remove(email); // Xóa sau khi dùng xong
+        }
+        
+        return isValid;
     }
 }
