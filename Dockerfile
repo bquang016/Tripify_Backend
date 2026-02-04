@@ -17,7 +17,7 @@ WORKDIR /app
 # Copy file .jar từ Stage 1 sang Stage 2
 COPY --from=build /app/target/*.jar app.jar
 
-# Mở port 8080
+# Mở port 8386
 EXPOSE 8386
 
 # Lệnh chạy ứng dụng

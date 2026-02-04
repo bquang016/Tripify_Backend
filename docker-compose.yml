@@ -10,34 +10,34 @@ services:
       # ==========================================
       # 1. DATABASE (Supabase PostgreSQL)
       # ==========================================
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db.fdizceclgnmdzhngxmco.supabase.co:5432/postgres
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=010605quanG@
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
 
       # ==========================================
       # 2. CLOUDFLARE R2 (Lưu trữ ảnh)
       # ==========================================
-      - R2_ACCESSKEYID=e3b04758dc2ca54599108a511ae431e5
-      - R2_SECRETKEY=bbfa34548c36a0c56005d60bc63de2f34abe3db0708828b87aed00b024e28570
-      - R2_BUCKET=tripify-bucket
-      - R2_ENDPOINT=https://[ACCOUNT_ID].r2.cloudflarestorage.com
-      - R2_PUBLIC_DOMAIN=https://pub-9ec57b2afc244ec4bcd30e65e815d28c.r2.dev
+      - R2_ACCESSKEYID=${R2_ACCESS_KEY}
+      - R2_SECRETKEY=${R2_SECRET_KEY}
+      - R2_BUCKET=${R2_BUCKET}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN}
 
       # ==========================================
       # 3. GOOGLE LOGIN
       # ==========================================
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=948635490411-4davp08nk4ttppotcahgf3b0tggop4t9.apps.googleusercontent.com
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=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
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI={baseUrl}/login/oauth2/code/google
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE=email,profile
 
       # ==========================================
       # 4. FACEBOOK LOGIN
       # ==========================================
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_ID=1429181282330170
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_SECRET=371bb440bf674928dad1a4fb0076ca86
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET}
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_REDIRECT_URI={baseUrl}/login/oauth2/code/facebook
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_SCOPE=email,public_profile
 
@@ -46,8 +46,8 @@ services:
       # ==========================================
       - SPRING_MAIL_HOST=smtp.gmail.com
       - SPRING_MAIL_PORT=587
-      - SPRING_MAIL_USERNAME=travelmate.co.ltd@gmail.com
-      - SPRING_MAIL_PASSWORD=ypzrwkvxtjtdsefk
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED=true
@@ -55,8 +55,9 @@ services:
       # ==========================================
       # 6. AI GEMINI & JWT
       # ==========================================
-      - GEMINI_API_KEY=AIzaSyDpDWSVg5OnUHd_JBRjF2Re_6uxIrjLmpU
-      - JWT_SECRET=TripifySuperSecretKey2026_Dayladuancua5Thang23IT5HEHE
+      - GEMINI_API_KEY=${GEMINI_KEY}
+      - GEMINI_API_URL=${GEMINI_URL}
+      - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=86400000
 
     restart: unless-stopped
