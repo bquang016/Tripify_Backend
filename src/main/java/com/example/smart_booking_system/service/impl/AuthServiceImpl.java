@@ -24,6 +24,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.context.Context;
+import java.util.Random;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -69,6 +71,97 @@ public class AuthServiceImpl implements AuthService {
         // .{8,}             : Độ dài tối thiểu 8 ký tự
         String regex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!.*])(?=\\S+$).{8,}$";
         return password != null && password.matches(regex);
+    }
+    // --- CÁC HÀM MỚI CHO OWNER REGISTRATION (ĐÃ SỬA LỖI) ---
+
+    @Override
+    public void sendOwnerRegistrationOtp(String email) {
+        // 1. Kiểm tra email đã tồn tại
+        if (userRepository.existsByEmail(email)) {
+            throw new BadRequestException("Email này đã được đăng ký.");
+        }
+
+        // 2. Tạo OTP 6 số (Tái sử dụng logic của hàm sendOtp có sẵn)
+        String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+
+        // 3. Lưu vào Map otpStorage (dùng biến có sẵn của bạn)
+        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 phút
+        otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
+
+        // 4. Gửi Email
+        org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+        context.setVariable("otpCode", otpCode);
+        context.setVariable("title", "Xác thực đăng ký Đối tác");
+        context.setVariable("message", "Sử dụng mã bên dưới để hoàn tất đăng ký đối tác Tripify.");
+
+        emailService.sendHtmlEmail(email, "Mã xác thực đăng ký Đối tác", "email/otp-email", context);
+    }
+
+    @Override
+    @Transactional // Nên thêm Transactional để đảm bảo toàn vẹn dữ liệu
+    public LoginResponse verifyOwnerOtpAndRegister(OwnerRegisterRequest request) {
+        // 1. Validate OTP
+        OtpInfo info = otpStorage.get(request.getEmail());
+        if (info == null || !info.getCode().equals(request.getOtp()) || System.currentTimeMillis() > info.getExpiryTime()) {
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
+        }
+
+        // Xóa OTP sau khi dùng
+        otpStorage.remove(request.getEmail());
+
+        // (Optional) Kiểm tra an toàn: Đảm bảo email chưa bị đăng ký bởi người khác trong lúc nhập OTP
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email này đã được đăng ký.");
+        }
+
+        // 2. Tạo User mới role OWNER
+        User user = new User();
+        user.setUserId(UUID.randomUUID().toString()); // Tạo ID
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFullName("Partner " + request.getEmail());
+        user.setIsEmailVerified(true);
+        user.setStatus("ACTIVE");
+
+        // Dùng AuthProvider.local (chữ thường - khớp với Enum của bạn)
+        user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
+
+        Role ownerRole = roleRepository.findByRoleName("OWNER")
+                .orElseThrow(() -> new ResourceNotFoundException("Role OWNER not found"));
+        user.addRole(ownerRole);
+
+        User savedUser = userRepository.save(user);
+
+        // 3. Generate Token
+        // Tạo CustomUserDetails từ user vừa lưu để nạp vào Context
+        com.example.smart_booking_system.security.CustomUserDetails userDetails =
+                com.example.smart_booking_system.security.CustomUserDetails.create(savedUser);
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+
+        // --- ĐOẠN SỬA LỖI: CHỈ KHAI BÁO 1 LẦN ---
+        String accessToken = tokenProvider.generateToken(authentication);
+        long expiresIn = tokenProvider.getExpirationTime();
+        // ----------------------------------------
+
+        // 4. Trả về LoginResponse
+        Set<String> roles = java.util.Set.of("OWNER");
+
+        LoginResponse.UserResponse userResponse = new LoginResponse.UserResponse(
+                savedUser.getUserId(),
+                savedUser.getFullName(),
+                savedUser.getEmail(),
+                savedUser.getPhoneNumber(),
+                savedUser.getIsEmailVerified(),
+                savedUser.getStatus(),
+                roles
+        );
+
+        return new LoginResponse(accessToken, expiresIn, userResponse);
     }
 
     // ✅ Tạo mật khẩu (cho user social chưa có pass)
@@ -371,4 +464,5 @@ public class AuthServiceImpl implements AuthService {
         
         return isValid;
     }
+
 }

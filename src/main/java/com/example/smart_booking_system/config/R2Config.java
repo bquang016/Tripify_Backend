@@ -1,4 +1,4 @@
-package com.smartbooking.config;
+package com.example.smart_booking_system.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,39 +8,36 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 
 import java.net.URI;
 
 @Configuration
 public class R2Config {
 
-    @Value("${r2.accessKeyId}")
-    private String accessKey;
+    @Value("${r2.access-key-id}")
+    private String accessKeyId;
 
-    @Value("${r2.secretKey}")
-    private String secretKey;
+    @Value("${r2.secret-access-key}")
+    private String secretAccessKey;
 
+    // Sửa: Đọc endpoint trực tiếp thay vì accountId
     @Value("${r2.endpoint}")
     private String endpoint;
 
     @Bean
-    public S3Client r2Client() {
+    public S3Client s3Client() {
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
+
+        // Cấu hình S3 Client để tương thích với R2
+        S3Configuration serviceConfiguration = S3Configuration.builder()
+                .pathStyleAccessEnabled(true) // Quan trọng cho R2
+                .build();
 
         return S3Client.builder()
-                .region(Region.US_EAST_1)  // Cloudflare R2 required (fake region)
-                .credentialsProvider(
-                        StaticCredentialsProvider.create(
-                                AwsBasicCredentials.create(accessKey, secretKey)
-                        )
-                )
-                .endpointOverride(URI.create(endpoint)) // IMPORTANT
-                .serviceConfiguration(
-                        S3Configuration.builder()
-                                .pathStyleAccessEnabled(true) // R2 requires this
-                                .build()
-                )
-                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .endpointOverride(URI.create(endpoint)) // Sử dụng endpoint từ .env
+                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .region(Region.US_EAST_1) // R2 luôn dùng region này (hoặc 'auto')
+                .serviceConfiguration(serviceConfiguration)
                 .build();
     }
 }
