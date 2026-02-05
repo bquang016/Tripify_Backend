@@ -1,12 +1,13 @@
 package com.example.smart_booking_system.entity;
 
+import com.example.smart_booking_system.enums.MembershipRank; // ✅ Import mới
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString; // ✅ Import mới
-import lombok.EqualsAndHashCode; // ✅ Import mới
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,7 +23,6 @@ public class UserDetail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer userdetailId;
 
-    // ✅ SỬA: Ngắt vòng lặp toString với User
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", nullable = false, unique = true)
     @JsonIgnore
@@ -47,6 +47,18 @@ public class UserDetail {
 
     @Column(length = 100)
     private String country;
+
+    // ✅ THÊM CÁC TRƯỜNG BỊ THIẾU ĐỂ FIX LỖI DTO
+    @Column(columnDefinition = "integer default 0")
+    private int points = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "membership_rank")
+    private MembershipRank membershipRank;
+
+    @Column(name = "notification_email")
+    private String notificationEmail;
+    // ------------------------------------------
 
     @Column(nullable = false)
     private boolean isActive = true;
