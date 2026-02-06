@@ -405,6 +405,10 @@ public class EmailServiceImpl implements EmailService {
                     templateName = "email/otp-2fa";
                     subject = "Mã OTP xác thực 2 bước - Smart Booking";
                     break;
+                case LOGIN_2FA:
+                    templateName = "email/otp-2fa-login";
+                    subject = "Mã OTP đăng nhập - Smart Booking";
+                    break;
             }
 
             Context context = new Context();

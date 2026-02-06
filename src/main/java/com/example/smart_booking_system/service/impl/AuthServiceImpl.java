@@ -318,27 +318,36 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
         // 1. Tìm user
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không chính xác"));
 
         // 2. CHECK XÁC THỰC EMAIL
-        // ❌ CŨ: throw new UnauthorizedException(...) -> Trả về 401 (Sai Logic)
-        // ✅ MỚI: throw new DisabledException(...) -> Trả về 403 (Đúng Logic Frontend cần)
         if (Boolean.FALSE.equals(user.getIsEmailVerified())) {
             throw new DisabledException("Tài khoản chưa được xác thực. Vui lòng kiểm tra email!");
         }
 
         // 3. CHECK TRẠNG THÁI KHÓA
-        // ✅ MỚI: Dùng LockedException hoặc DisabledException để trả về 403
         if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "BANNED".equalsIgnoreCase(user.getStatus())) {
             throw new LockedException("Tài khoản của bạn đã bị khóa: " + user.getStatus());
         }
 
-        // 4. Nếu qua được các bước trên thì mới check mật khẩu
-        // Nếu sai mật khẩu ở đây, nó sẽ tự ném BadCredentialsException (401)
+        // 4. Kiểm tra mật khẩu trước
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
+        }
+
+        // 5. KIỂM TRA 2FA
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            // Gửi OTP LOGIN_2FA
+            sendOtp(normalizedEmail, com.example.smart_booking_system.enums.OtpType.LOGIN_2FA);
+            return LoginResponse.twoFaRequired();
+        }
+
+        // 6. Nếu không bật 2FA, thực hiện login như bình thường
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -428,6 +437,7 @@ public class AuthServiceImpl implements AuthService {
 
     // ✅ Đổi mật khẩu (Change Password)
     @Override
+
     @Transactional
     public void changePassword(ChangePasswordRequest request, String userId) {
         User user = userRepository.findById(userId)
@@ -543,5 +553,76 @@ public class AuthServiceImpl implements AuthService {
         
         return isValid;
     }
+
+    // --- 2FA IMPLEMENTATION ---
+
+    @Override
+    @Transactional
+    public void request2faToggle(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Gửi OTP để xác nhận bật/tắt
+        sendOtp(user.getEmail(), com.example.smart_booking_system.enums.OtpType.TWO_FACTOR_AUTH);
+    }
+
+    @Override
+    @Transactional
+    public void verify2faToggle(String userId, String otp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!verifyOtp(user.getEmail(), otp)) {
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
+        }
+
+        // Đảo ngược trạng thái 2FA
+        user.setTwoFactorEnabled(!user.getTwoFactorEnabled());
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse verify2faLogin(VerifyOtpRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        
+        // 1. Kiểm tra OTP
+        if (!verifyOtp(normalizedEmail, request.getOtp())) {
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
+        }
+
+        // 2. Nếu OTP đúng, tiến hành lấy thông tin user và tạo token
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        CustomUserDetails userDetails = CustomUserDetails.create(user);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String token = tokenProvider.generateToken(authentication);
+        long expiresIn = tokenProvider.getExpirationTime();
+
+        Set<String> roles = userDetails.getAuthorities().stream()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .collect(Collectors.toSet());
+
+        LoginResponse.UserResponse userResponse = new LoginResponse.UserResponse(
+                user.getUserId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getIsEmailVerified(),
+                user.getStatus(),
+                roles
+        );
+
+        return new LoginResponse(token, expiresIn, userResponse);
+    }
+    // --------------------------
 
 }

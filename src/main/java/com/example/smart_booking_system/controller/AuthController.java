@@ -151,4 +151,31 @@ public class AuthController {
         authService.createPassword(currentUser.getUserId(), newPassword);
         return ResponseEntity.ok(ApiResponse.success("Tạo mật khẩu thành công"));
     }
+
+    // --- 2FA ENDPOINTS ---
+
+    @PostMapping("/2fa/request-toggle")
+    public ResponseEntity<ApiResponse<Void>> request2faToggle(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        authService.request2faToggle(currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP xác thực 2 bước đã được gửi đến email của bạn."));
+    }
+
+    @PostMapping("/2fa/toggle")
+    public ResponseEntity<ApiResponse<Void>> toggle2fa(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestBody Map<String, String> request) {
+        String otp = request.get("otp");
+        if (otp == null) throw new BadRequestException("Mã OTP là bắt buộc");
+        
+        authService.verify2faToggle(currentUser.getUserId(), otp);
+        return ResponseEntity.ok(ApiResponse.success("Cấu hình xác thực 2 bước đã được cập nhật thành công."));
+    }
+
+    @PostMapping("/2fa/verify-login")
+    public ResponseEntity<ApiResponse<LoginResponse>> verify2faLogin(
+            @Valid @RequestBody VerifyOtpRequest request) {
+        LoginResponse response = authService.verify2faLogin(request);
+        return ResponseEntity.ok(ApiResponse.success("Xác thực thành công", response));
+    }
 }
