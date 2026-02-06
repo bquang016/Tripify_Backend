@@ -49,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
     
     // Thay thế Redis bằng Map trong RAM
     private final Map<String, OtpInfo> otpStorage = new ConcurrentHashMap<>();
+    private final Map<String, RegisterRequest> pendingRegistrations = new ConcurrentHashMap<>();
 
     // Class nội bộ lưu thông tin OTP
     @lombok.Data
@@ -215,6 +216,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void register(RegisterRequest request) {
+        String normalizedEmail = request.getEmail().toLowerCase();
         if (!request.isPasswordMatching()) {
             throw new BadRequestException("Mật khẩu xác nhận không khớp");
         }
@@ -224,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
 
-        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        Optional<User> existingUser = userRepository.findByEmail(normalizedEmail);
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
@@ -238,25 +240,78 @@ public class AuthServiceImpl implements AuthService {
             throw new ConflictException("Email đã được đăng ký");
         }
 
+        // Thay vì lưu vào DB, lưu vào Map tạm thời
+        pendingRegistrations.put(normalizedEmail, request);
+        
+        // Gửi OTP qua email
+        sendOtp(normalizedEmail, com.example.smart_booking_system.enums.OtpType.REGISTER);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse verifyRegisterOtp(VerifyOtpRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String cleanOtp = request.getOtp().trim();
+
+        System.out.println("DEBUG: VerifyRegister attempt for: " + normalizedEmail + " with OTP: [" + cleanOtp + "]");
+
+        // 1. Kiểm tra OTP
+        if (!verifyOtp(normalizedEmail, cleanOtp)) {
+            throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
+        }
+
+        // 2. Lấy thông tin đăng ký tạm thời
+        RegisterRequest registerRequest = pendingRegistrations.get(normalizedEmail);
+        if (registerRequest == null) {
+            System.out.println("DEBUG: Pending registration NOT FOUND for: " + normalizedEmail);
+            throw new BadRequestException("Thông tin đăng ký không tồn tại hoặc đã hết hạn.");
+        }
+
+        // 3. Tạo User mới
         User user = new User();
         user.setUserId(UUID.randomUUID().toString());
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setStatus("INACTIVE");
-        user.setIsEmailVerified(false);
-
-        String verificationToken = UUID.randomUUID().toString();
-        user.setVerificationToken(verificationToken);
-        user.setVerificationTokenExpiry(LocalDateTime.now().plusMinutes(10));
+        user.setFullName(registerRequest.getFullName());
+        user.setEmail(normalizedEmail);
+        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setStatus("ACTIVE"); // Kích hoạt luôn
+        user.setIsEmailVerified(true); // Đã xác thực qua OTP
+        user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
 
         Role customerRole = roleRepository.findByRoleName("CUSTOMER")
                 .orElseThrow(() -> new ResourceNotFoundException("Role 'CUSTOMER' not found"));
         user.addRole(customerRole);
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        
+        // Xóa thông tin đăng ký tạm thời
+        pendingRegistrations.remove(request.getEmail());
 
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
+        // 4. Đăng nhập luôn và trả về token
+        CustomUserDetails userDetails = CustomUserDetails.create(savedUser);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+
+        String token = tokenProvider.generateToken(authentication);
+        long expiresIn = tokenProvider.getExpirationTime();
+
+        Set<String> roles = userDetails.getAuthorities().stream()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .collect(Collectors.toSet());
+
+        LoginResponse.UserResponse userResponse = new LoginResponse.UserResponse(
+                savedUser.getUserId(),
+                savedUser.getFullName(),
+                savedUser.getEmail(),
+                savedUser.getPhoneNumber(),
+                savedUser.getIsEmailVerified(),
+                savedUser.getStatus(),
+                roles
+        );
+
+        return new LoginResponse(token, expiresIn, userResponse);
     }
 
     // ✅ Đăng nhập
@@ -430,37 +485,61 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type) {
+        String normalizedEmail = email.toLowerCase();
+        boolean userExists = userRepository.existsByEmail(normalizedEmail);
+
+        // 1. Đối với ĐĂNG KÝ: Không được phép gửi OTP nếu email đã có trong hệ thống
+        if (type == com.example.smart_booking_system.enums.OtpType.REGISTER && userExists) {
+            throw new ConflictException("Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.");
+        }
+
+        // 2. Đối với QUÊN MẬT KHẨU hoặc 2FA: Email BUỘC PHẢI tồn tại thì mới gửi được
+        if ((type == com.example.smart_booking_system.enums.OtpType.FORGOT_PASSWORD || 
+             type == com.example.smart_booking_system.enums.OtpType.TWO_FACTOR_AUTH) && !userExists) {
+            throw new ResourceNotFoundException("Không tìm thấy tài khoản với email này.");
+        }
+
         // Tạo mã OTP 6 số
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+        System.out.println("DEBUG: OTP generated for " + normalizedEmail + " is: " + otpCode);
 
-        // Lưu vào Map (thay vì Redis) - Hết hạn sau 5 phút (300.000 ms)
+        // Lưu vào Map - Hết hạn sau 5 phút
         long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000);
-        otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
+        otpStorage.put(normalizedEmail, new OtpInfo(otpCode, expiryTime));
 
-        // Gửi email
-        emailService.sendOtpEmail(email, otpCode, type);
+        // Gửi email qua EmailService
+        emailService.sendOtpEmail(normalizedEmail, otpCode, type);
     }
 
     @Override
     public boolean verifyOtp(String email, String code) {
-        OtpInfo info = otpStorage.get(email);
+        if (email == null || code == null) return false;
+        
+        String normalizedEmail = email.trim().toLowerCase();
+        String cleanCode = code.trim();
+        
+        OtpInfo info = otpStorage.get(normalizedEmail);
         
         if (info == null) {
+            System.out.println("DEBUG: OTP Storage - NO DATA for email: " + normalizedEmail);
             return false;
         }
 
         // Kiểm tra hết hạn
         if (System.currentTimeMillis() > info.getExpiryTime()) {
-            otpStorage.remove(email);
+            System.out.println("DEBUG: OTP Storage - EXPIRED for email: " + normalizedEmail);
+            otpStorage.remove(normalizedEmail);
             return false;
         }
 
         // Kiểm tra khớp mã
-        boolean isValid = info.getCode().equals(code);
+        boolean isValid = info.getCode().equals(cleanCode);
+        System.out.println("DEBUG: OTP Comparison for " + normalizedEmail + ": Expected=[" + info.getCode() + "], Received=[" + cleanCode + "], Match=" + isValid);
         
-        if (isValid) {
-            otpStorage.remove(email); // Xóa sau khi dùng xong
-        }
+        // TẠM THỜI KHÔNG XÓA ĐỂ DEBUG - Sẽ xóa bằng scheduler sau
+        // if (isValid) {
+        //     otpStorage.remove(normalizedEmail); 
+        // }
         
         return isValid;
     }

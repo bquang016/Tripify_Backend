@@ -15,5 +15,5 @@ public class VerifyOtpRequest {
     private String email;
 
     @NotBlank(message = "Mã OTP không được để trống")
-    private String otpCode;
+    private String otp;
 }
