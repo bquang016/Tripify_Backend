@@ -33,7 +33,7 @@ public interface AuthService {
 
     void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type);
 
-    boolean verifyOtp(String email, String code);
+    String verifyOtp(String email, String code, com.example.smart_booking_system.enums.OtpType type);
 
     void sendOwnerRegistrationOtp(String email);
     LoginResponse verifyOwnerOtpAndRegister(OwnerRegisterRequest request);

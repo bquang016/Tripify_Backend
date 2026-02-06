@@ -256,7 +256,7 @@ public class AuthServiceImpl implements AuthService {
         System.out.println("DEBUG: VerifyRegister attempt for: " + normalizedEmail + " with OTP: [" + cleanOtp + "]");
 
         // 1. Kiểm tra OTP
-        if (!verifyOtp(normalizedEmail, cleanOtp)) {
+        if (verifyOtp(normalizedEmail, cleanOtp, com.example.smart_booking_system.enums.OtpType.REGISTER) == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
 
@@ -396,16 +396,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String normalizedEmail = request.getEmail().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + request.getEmail()));
 
-        String resetToken = UUID.randomUUID().toString();
-        user.setResetPasswordToken(resetToken);
-        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        // Tạo mã OTP 6 số
+        String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+        
+        // 1. Lưu vào Database (để dùng cho resetPassword nếu không có email)
+        user.setResetPasswordToken(otpCode);
+        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(5));
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        emailService.sendResetPasswordEmail(user.getEmail(), user.getFullName(), resetToken);
+        // 2. Lưu vào Map (để đồng bộ với logic OTP chung)
+        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000);
+        otpStorage.put(normalizedEmail, new OtpInfo(otpCode, expiryTime));
+
+        // 3. Gửi OTP qua email (sử dụng template OTP)
+        emailService.sendOtpEmail(normalizedEmail, otpCode, com.example.smart_booking_system.enums.OtpType.FORGOT_PASSWORD);
     }
 
     // ✅ Đặt lại mật khẩu (Reset Password)
@@ -421,11 +430,12 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
 
+        // Tìm user bằng Token (UUID đã được sinh ra ở bước verify-otp)
         User user = userRepository.findByResetPasswordToken(request.getToken())
-                .orElseThrow(() -> new BadRequestException("Mã đặt lại mật khẩu không hợp lệ"));
+                .orElseThrow(() -> new BadRequestException("Mã xác thực không hợp lệ hoặc đã được sử dụng."));
 
         if (user.getResetPasswordTokenExpiry() == null || user.getResetPasswordTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Mã đặt lại mật khẩu đã hết hạn");
+            throw new BadRequestException("Mã xác thực đã hết hạn.");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -522,36 +532,40 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public boolean verifyOtp(String email, String code) {
-        if (email == null || code == null) return false;
+    @Transactional
+    public String verifyOtp(String email, String code, com.example.smart_booking_system.enums.OtpType type) {
+        if (email == null || code == null) return null;
         
         String normalizedEmail = email.trim().toLowerCase();
         String cleanCode = code.trim();
         
+        // 1. Kiểm tra OTP trong Map (otpStorage)
         OtpInfo info = otpStorage.get(normalizedEmail);
-        
-        if (info == null) {
-            System.out.println("DEBUG: OTP Storage - NO DATA for email: " + normalizedEmail);
-            return false;
-        }
+        if (info == null) return null;
 
-        // Kiểm tra hết hạn
         if (System.currentTimeMillis() > info.getExpiryTime()) {
-            System.out.println("DEBUG: OTP Storage - EXPIRED for email: " + normalizedEmail);
             otpStorage.remove(normalizedEmail);
-            return false;
+            return null;
         }
 
-        // Kiểm tra khớp mã
-        boolean isValid = info.getCode().equals(cleanCode);
-        System.out.println("DEBUG: OTP Comparison for " + normalizedEmail + ": Expected=[" + info.getCode() + "], Received=[" + cleanCode + "], Match=" + isValid);
-        
-        // TẠM THỜI KHÔNG XÓA ĐỂ DEBUG - Sẽ xóa bằng scheduler sau
-        // if (isValid) {
-        //     otpStorage.remove(normalizedEmail); 
-        // }
-        
-        return isValid;
+        if (!info.getCode().equals(cleanCode)) return null;
+
+        // 2. Nếu OTP đúng và loại là FORGOT_PASSWORD, sinh Secure Token (UUID)
+        if (type == com.example.smart_booking_system.enums.OtpType.FORGOT_PASSWORD) {
+            User user = userRepository.findByEmail(normalizedEmail)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            
+            String secureToken = UUID.randomUUID().toString();
+            user.setResetPasswordToken(secureToken);
+            user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(15));
+            userRepository.save(user);
+            
+            otpStorage.remove(normalizedEmail);
+            return secureToken;
+        }
+
+        // 3. Các loại khác trả về SUCCESS
+        return "SUCCESS";
     }
 
     // --- 2FA IMPLEMENTATION ---
@@ -572,7 +586,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (!verifyOtp(user.getEmail(), otp)) {
+        if (verifyOtp(user.getEmail(), otp, com.example.smart_booking_system.enums.OtpType.TWO_FACTOR_AUTH) == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
 
@@ -587,7 +601,7 @@ public class AuthServiceImpl implements AuthService {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         
         // 1. Kiểm tra OTP
-        if (!verifyOtp(normalizedEmail, request.getOtp())) {
+        if (verifyOtp(normalizedEmail, request.getOtp(), com.example.smart_booking_system.enums.OtpType.LOGIN_2FA) == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
 

@@ -94,10 +94,10 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        boolean isValid = authService.verifyOtp(request.getEmail(), request.getOtp());
-        if (isValid) {
-            return ResponseEntity.ok(ApiResponse.success("OTP verification successful."));
+    public ResponseEntity<ApiResponse<String>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        String token = authService.verifyOtp(request.getEmail(), request.getOtp(), request.getType());
+        if (token != null) {
+            return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công.", token));
         } else {
             throw new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
