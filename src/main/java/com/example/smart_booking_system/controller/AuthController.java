@@ -33,7 +33,13 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Registration successful. Please check your email to verify your account."));
+                .body(ApiResponse.success("Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra để hoàn tất đăng ký."));
+    }
+
+    @PostMapping("/verify-register")
+    public ResponseEntity<ApiResponse<LoginResponse>> verifyRegister(@Valid @RequestBody VerifyOtpRequest request) {
+        LoginResponse response = authService.verifyRegisterOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công", response));
     }
 
     @PostMapping("/login")
@@ -89,7 +95,7 @@ public class AuthController {
 
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        boolean isValid = authService.verifyOtp(request.getEmail(), request.getOtpCode());
+        boolean isValid = authService.verifyOtp(request.getEmail(), request.getOtp());
         if (isValid) {
             return ResponseEntity.ok(ApiResponse.success("OTP verification successful."));
         } else {

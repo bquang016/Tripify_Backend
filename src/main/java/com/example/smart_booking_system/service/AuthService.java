@@ -8,6 +8,8 @@ public interface AuthService {
 
     void register(RegisterRequest request);
 
+    LoginResponse verifyRegisterOtp(VerifyOtpRequest request);
+
     LoginResponse login(LoginRequest request);
 
     void verifyEmail(String token);
