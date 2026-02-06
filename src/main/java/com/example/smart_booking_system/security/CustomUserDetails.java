@@ -28,6 +28,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     private Collection<? extends GrantedAuthority> authorities;
     private Map<String, Object> attributes;
     private List<SocialAccount> socialAccounts;
+    private boolean twoFactorEnabled;
 
     // ✅ THÊM TRƯỜNG MỚI
     private boolean hasPassword;
@@ -55,6 +56,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
                 authorities,
                 null, // Attributes là null khi login thường
                 user.getSocialAccounts(),
+                user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled(), // ✅ populated from user entity
                 hasPasswordSet // ✅ Truyền giá trị vào constructor
         );
     }

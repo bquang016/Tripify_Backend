@@ -26,6 +26,11 @@ public interface AuthService {
     void createPassword(String userId, String newPassword);
     User getCurrentUser();
 
+    // 2FA Methods
+    void request2faToggle(String userId);
+    void verify2faToggle(String userId, String otp);
+    LoginResponse verify2faLogin(VerifyOtpRequest request);
+
     void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type);
 
     boolean verifyOtp(String email, String code);
