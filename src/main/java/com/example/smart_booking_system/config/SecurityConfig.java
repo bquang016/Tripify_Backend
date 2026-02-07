@@ -92,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/properties/featured").permitAll()
                         .requestMatchers("/api/v1/properties/{id}").permitAll()
                         .requestMatchers("/api/v1/payments/**").authenticated()
+                        .requestMatchers("/api/v1/auth/owner/**").permitAll()
 
                         // ===== 2. GENERAL AUTHENTICATED ROUTES =====
                         .requestMatchers(
