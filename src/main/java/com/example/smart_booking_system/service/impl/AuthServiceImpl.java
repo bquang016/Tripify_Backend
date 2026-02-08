@@ -2,10 +2,13 @@ package com.example.smart_booking_system.service.impl;
 
 import com.example.smart_booking_system.dto.request.auth.*;
 import com.example.smart_booking_system.dto.response.auth.LoginResponse;
+import com.example.smart_booking_system.dto.response.auth.VerifyOwnerOtpResponse;
 import com.example.smart_booking_system.entity.Role;
 import com.example.smart_booking_system.entity.SocialAccount;
 import com.example.smart_booking_system.entity.User;
 import com.example.smart_booking_system.exception.*;
+import com.example.smart_booking_system.repository.OwnerApplicationRepository;
+import com.example.smart_booking_system.enums.ApplicationStatus;
 import com.example.smart_booking_system.repository.RoleRepository;
 import com.example.smart_booking_system.repository.SocialAccountRepository;
 import com.example.smart_booking_system.repository.UserRepository;
@@ -46,7 +49,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
-    
+    private final OwnerApplicationRepository ownerApplicationRepository;
+
     // Thay thế Redis bằng Map trong RAM
     private final Map<String, OtpInfo> otpStorage = new ConcurrentHashMap<>();
 
@@ -61,35 +65,20 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private SocialAccountRepository socialAccountRepository;
 
-    // ✅ 1. HÀM KIỂM TRA ĐỘ MẠNH MẬT KHẨU (PRIVATE HELPER)
     private boolean isStrongPassword(String password) {
-        // Regex: 
-        // (?=.*[0-9])       : Ít nhất 1 số
-        // (?=.*[a-z])       : Ít nhất 1 chữ thường
-        // (?=.*[A-Z])       : Ít nhất 1 chữ hoa
-        // (?=.*[@#$%^&+=!]) : Ít nhất 1 ký tự đặc biệt
-        // .{8,}             : Độ dài tối thiểu 8 ký tự
         String regex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!.*])(?=\\S+$).{8,}$";
         return password != null && password.matches(regex);
     }
-    // --- CÁC HÀM MỚI CHO OWNER REGISTRATION (ĐÃ SỬA LỖI) ---
 
     @Override
-    public void sendOwnerRegistrationOtp(String email) {
-        // 1. Kiểm tra email đã tồn tại
-        if (userRepository.existsByEmail(email)) {
-            throw new BadRequestException("Email này đã được đăng ký.");
-        }
+    public void sendOwnerOtp(String email) {
+        checkOwnerEmail(email);
 
-        // 2. Tạo OTP 6 số (Tái sử dụng logic của hàm sendOtp có sẵn)
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
-
-        // 3. Lưu vào Map otpStorage (dùng biến có sẵn của bạn)
-        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 phút
+        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 minutes
         otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
 
-        // 4. Gửi Email
-        org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+        Context context = new Context();
         context.setVariable("otpCode", otpCode);
         context.setVariable("title", "Xác thực đăng ký Đối tác");
         context.setVariable("message", "Sử dụng mã bên dưới để hoàn tất đăng ký đối tác Tripify.");
@@ -98,73 +87,27 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional // Nên thêm Transactional để đảm bảo toàn vẹn dữ liệu
-    public LoginResponse verifyOwnerOtpAndRegister(OwnerRegisterRequest request) {
-        // 1. Validate OTP
+    public VerifyOwnerOtpResponse verifyOwnerOtp(VerifyOtpRequest request) {
         OtpInfo info = otpStorage.get(request.getEmail());
-        if (info == null || !info.getCode().equals(request.getOtp()) || System.currentTimeMillis() > info.getExpiryTime()) {
+        if (info == null || !info.getCode().equals(request.getOtpCode()) || System.currentTimeMillis() > info.getExpiryTime()) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
-
-        // Xóa OTP sau khi dùng
         otpStorage.remove(request.getEmail());
 
-        // (Optional) Kiểm tra an toàn: Đảm bảo email chưa bị đăng ký bởi người khác trong lúc nhập OTP
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("Email này đã được đăng ký.");
-        }
-
-        // 2. Tạo User mới role OWNER
-        User user = new User();
-        user.setUserId(UUID.randomUUID().toString()); // Tạo ID
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setFullName("Partner " + request.getEmail());
-        user.setIsEmailVerified(true);
-        user.setStatus("ACTIVE");
-
-        // Dùng AuthProvider.local (chữ thường - khớp với Enum của bạn)
-        user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
-
-        Role ownerRole = roleRepository.findByRoleName("OWNER")
-                .orElseThrow(() -> new ResourceNotFoundException("Role OWNER not found"));
-        user.addRole(ownerRole);
-
-        User savedUser = userRepository.save(user);
-
-        // 3. Generate Token
-        // Tạo CustomUserDetails từ user vừa lưu để nạp vào Context
-        com.example.smart_booking_system.security.CustomUserDetails userDetails =
-                com.example.smart_booking_system.security.CustomUserDetails.create(savedUser);
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
-        );
-
-        // --- ĐOẠN SỬA LỖI: CHỈ KHAI BÁO 1 LẦN ---
-        String accessToken = tokenProvider.generateToken(authentication);
-        long expiresIn = tokenProvider.getExpirationTime();
-        // ----------------------------------------
-
-        // 4. Trả về LoginResponse
-        Set<String> roles = java.util.Set.of("OWNER");
-
-        LoginResponse.UserResponse userResponse = new LoginResponse.UserResponse(
-                savedUser.getUserId(),
-                savedUser.getFullName(),
-                savedUser.getEmail(),
-                savedUser.getPhoneNumber(),
-                savedUser.getIsEmailVerified(),
-                savedUser.getStatus(),
-                roles
-        );
-
-        return new LoginResponse(accessToken, expiresIn, userResponse);
+        String temporaryToken = tokenProvider.generateTemporaryToken(request.getEmail());
+        return new VerifyOwnerOtpResponse(temporaryToken);
     }
 
-    // ✅ Tạo mật khẩu (cho user social chưa có pass)
+    @Override
+    public void checkOwnerEmail(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email đã được sử dụng bởi một tài khoản khác.");
+        }
+        if (ownerApplicationRepository.existsByEmailAndStatus(email, ApplicationStatus.PENDING)) {
+            throw new ConflictException("Một đơn đăng ký với email này đang được chờ duyệt.");
+        }
+    }
+
     @Override
     public void createPassword(String userId, String newPassword) {
         User user = userRepository.findById(userId)
@@ -174,7 +117,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tài khoản này đã có mật khẩu. Vui lòng dùng chức năng Đổi mật khẩu.");
         }
 
-        // Check độ mạnh
         if (!isStrongPassword(newPassword)) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -183,7 +125,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Ngắt kết nối MXH
     @Override
     @Transactional
     public void unlinkSocialAccount(String userId, String providerName) {
@@ -211,7 +152,6 @@ public class AuthServiceImpl implements AuthService {
         socialAccountRepository.delete(account);
     }
 
-    // ✅ Đăng ký người dùng mới
     @Override
     @Transactional
     public void register(RegisterRequest request) {
@@ -219,7 +159,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu xác nhận không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -229,12 +168,10 @@ public class AuthServiceImpl implements AuthService {
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
-            // Nếu tài khoản tồn tại VÀ đang bị khóa -> Báo lỗi chặn đăng ký
             if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "BANNED".equalsIgnoreCase(user.getStatus())) {
                 throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Không thể đăng ký lại với email này.");
             }
 
-            // Nếu tài khoản tồn tại nhưng không bị khóa (đang Active/Inactive) -> Báo lỗi trùng email như cũ
             throw new ConflictException("Email đã được đăng ký");
         }
 
@@ -259,29 +196,20 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
     }
 
-    // ✅ Đăng nhập
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        // 1. Tìm user
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không chính xác"));
 
-        // 2. CHECK XÁC THỰC EMAIL
-        // ❌ CŨ: throw new UnauthorizedException(...) -> Trả về 401 (Sai Logic)
-        // ✅ MỚI: throw new DisabledException(...) -> Trả về 403 (Đúng Logic Frontend cần)
         if (Boolean.FALSE.equals(user.getIsEmailVerified())) {
             throw new DisabledException("Tài khoản chưa được xác thực. Vui lòng kiểm tra email!");
         }
 
-        // 3. CHECK TRẠNG THÁI KHÓA
-        // ✅ MỚI: Dùng LockedException hoặc DisabledException để trả về 403
         if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "BANNED".equalsIgnoreCase(user.getStatus())) {
             throw new LockedException("Tài khoản của bạn đã bị khóa: " + user.getStatus());
         }
 
-        // 4. Nếu qua được các bước trên thì mới check mật khẩu
-        // Nếu sai mật khẩu ở đây, nó sẽ tự ném BadCredentialsException (401)
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -309,7 +237,6 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(token, expiresIn, userResponse);
     }
 
-    // ✅ Xác minh email
     @Override
     @Transactional
     public void verifyEmail(String token) {
@@ -328,7 +255,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Quên mật khẩu
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -344,7 +270,6 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendResetPasswordEmail(user.getEmail(), user.getFullName(), resetToken);
     }
 
-    // ✅ Đặt lại mật khẩu (Reset Password)
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
@@ -352,7 +277,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu xác nhận không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getNewPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -371,7 +295,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Đổi mật khẩu (Change Password)
     @Override
     @Transactional
     public void changePassword(ChangePasswordRequest request, String userId) {
@@ -386,7 +309,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu mới không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getNewPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -396,7 +318,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Gửi lại email xác minh
     @Override
     @Transactional
     public void resendVerificationEmail(String email) {
@@ -430,14 +351,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type) {
-        // Tạo mã OTP 6 số
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
 
-        // Lưu vào Map (thay vì Redis) - Hết hạn sau 5 phút (300.000 ms)
         long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000);
         otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
 
-        // Gửi email
         emailService.sendOtpEmail(email, otpCode, type);
     }
 
@@ -449,17 +367,15 @@ public class AuthServiceImpl implements AuthService {
             return false;
         }
 
-        // Kiểm tra hết hạn
         if (System.currentTimeMillis() > info.getExpiryTime()) {
             otpStorage.remove(email);
             return false;
         }
 
-        // Kiểm tra khớp mã
         boolean isValid = info.getCode().equals(code);
         
         if (isValid) {
-            otpStorage.remove(email); // Xóa sau khi dùng xong
+            otpStorage.remove(email);
         }
         
         return isValid;

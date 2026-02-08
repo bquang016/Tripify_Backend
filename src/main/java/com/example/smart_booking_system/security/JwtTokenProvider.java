@@ -44,6 +44,20 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String generateTemporaryToken(String email) {
+        Date now = new Date();
+        // 15 minutes expiration for temporary token
+        Date expiryDate = new Date(now.getTime() + 15 * 60 * 1000);
+
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("type", "temporary")
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .compact();
+    }
+
     /**
      * Get user ID from JWT token
      */

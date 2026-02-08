@@ -2,13 +2,13 @@ package com.example.smart_booking_system.controller;
 
 import com.example.smart_booking_system.dto.request.auth.*;
 import com.example.smart_booking_system.dto.response.ApiResponse;
+import com.example.smart_booking_system.dto.response.auth.VerifyOwnerOtpResponse;
 import com.example.smart_booking_system.dto.response.auth.LoginResponse;
 import com.example.smart_booking_system.exception.BadRequestException;
 import com.example.smart_booking_system.security.CustomUserDetails;
 import com.example.smart_booking_system.security.JwtTokenProvider;
 import com.example.smart_booking_system.service.AuthService;
 import com.example.smart_booking_system.service.TokenBlacklistService;
-import com.example.smart_booking_system.dto.request.auth.OwnerRegisterRequest; // Import DTO
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -146,18 +146,24 @@ public class AuthController {
         authService.createPassword(currentUser.getUserId(), newPassword);
         return ResponseEntity.ok(ApiResponse.success("Tạo mật khẩu thành công"));
     }
+
+    // --- Owner Registration Flow ---
+
+    @PostMapping("/owner/check-email")
+    public ResponseEntity<ApiResponse<Void>> checkOwnerEmail(@Valid @RequestBody CheckEmailRequest request) {
+        authService.checkOwnerEmail(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Email is available for registration."));
+    }
+
     @PostMapping("/owner/send-otp")
-    public ResponseEntity<ApiResponse<Void>> sendOwnerOtp(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
-        // Kiểm tra email null/empty nếu cần
-        authService.sendOwnerRegistrationOtp(email);
+    public ResponseEntity<ApiResponse<Void>> sendOwnerOtp(@Valid @RequestBody CheckEmailRequest request) {
+        authService.sendOwnerOtp(request.getEmail());
         return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi đến email.", null));
     }
 
-    // 2. API Đăng ký & Xác thực
-    @PostMapping("/owner/register")
-    public ResponseEntity<ApiResponse<LoginResponse>> registerOwner(@RequestBody OwnerRegisterRequest request) {
-        LoginResponse response = authService.verifyOwnerOtpAndRegister(request);
-        return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công", response));
+    @PostMapping("/owner/verify-otp")
+    public ResponseEntity<ApiResponse<VerifyOwnerOtpResponse>> verifyOwnerOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        VerifyOwnerOtpResponse response = authService.verifyOwnerOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("OTP verification successful.", response));
     }
 }

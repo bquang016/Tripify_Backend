@@ -1,6 +1,6 @@
 package com.example.smart_booking_system.controller;
 
-import com.example.smart_booking_system.dto.request.admin.OwnerApplicationReviewDTO;
+import com.example.smart_booking_system.dto.request.admin.RejectReasonDTO;
 import com.example.smart_booking_system.dto.response.ApiResponse;
 import com.example.smart_booking_system.dto.response.admin.DashboardDataDTO; // ✅ Đổi sang DTO mới đầy đủ hơn
 import com.example.smart_booking_system.dto.response.admin.OwnerApplicationDTO;
@@ -37,10 +37,6 @@ public class AdminApplicationController {
     private final UserRepository userRepo;
     private final PropertyRepository propertyRepo;
 
-    // ========================================================================
-    // 1. API Lấy danh sách đơn (GIỮ NGUYÊN - KHÔNG SỬA)
-    // URL: /api/v1/admin/owner-applications?status=PENDING
-    // ========================================================================
     @GetMapping
     public ResponseEntity<?> getOwnerApplications(@RequestParam(required = false) String status) {
         try {
@@ -60,40 +56,27 @@ public class AdminApplicationController {
         }
     }
 
-    // ========================================================================
-    // 2. API Duyệt/Từ chối đơn (GIỮ NGUYÊN - KHÔNG SỬA)
-    // URL: /api/v1/admin/owner-applications/{id}/review
-    // ========================================================================
-    @PostMapping("/{applicationId}/review")
-    public ResponseEntity<?> reviewOwnerApplication(
+    @PostMapping("/{applicationId}/approve")
+    public ResponseEntity<ApiResponse<Void>> approveApplication(
             @PathVariable Long applicationId,
-            @Valid @RequestBody OwnerApplicationReviewDTO reviewDTO,
             Authentication authentication
     ) {
-        try {
-            String adminUsername = authentication.getName();
-            OwnerApplicationDTO result = ownerApplicationService.reviewApplication(applicationId, reviewDTO, adminUsername);
-
-            String message;
-            if (reviewDTO.getStatus() == ApplicationStatus.APPROVED) {
-                message = "Đã duyệt đơn thành công";
-            } else if (reviewDTO.getStatus() == ApplicationStatus.REJECTED) {
-                message = "Đã từ chối đơn";
-            } else {
-                message = "Trạng thái không thay đổi";
-            }
-
-            return ResponseEntity.ok(ApiResponse.success(message, result));
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lỗi xử lý: " + e.getMessage()));
-        }
+        String adminUsername = authentication.getName();
+        ownerApplicationService.approveApplication(applicationId, adminUsername);
+        return ResponseEntity.ok(ApiResponse.success("Đã duyệt đơn đăng ký thành công.", null));
     }
 
-    // ========================================================================
-    // 3. API Thống kê Dashboard (NÂNG CẤP LOGIC MỚI)
-    // URL cũ: /api/v1/admin/owner-applications/dashboard-stats (Vẫn giữ path này)
-    // ========================================================================
+    @PostMapping("/{applicationId}/reject")
+    public ResponseEntity<ApiResponse<Void>> rejectApplication(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody RejectReasonDTO rejectReason,
+            Authentication authentication
+    ) {
+        String adminUsername = authentication.getName();
+        ownerApplicationService.rejectApplication(applicationId, rejectReason.getReason(), adminUsername);
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối đơn đăng ký.", null));
+    }
+
     @GetMapping("/dashboard-stats")
     public ResponseEntity<?> getDashboardStats(
             @RequestParam(required = false) Integer year,
@@ -107,16 +90,11 @@ public class AdminApplicationController {
             String queryCity = (city != null && !city.trim().isEmpty()) ? city.trim() : null;
             String queryOwnerId = (ownerId != null && !ownerId.trim().isEmpty()) ? ownerId.trim() : null;
 
-            // 1) Cards
             BigDecimal revenue = bookingRepo.calculateFilteredRevenue(queryYear, queryMonth, queryCity, queryOwnerId);
             long users = userRepo.count();
             long properties = propertyRepo.count();
-
-            // đúng 24h thì nên dùng countNewBookings + filter riêng,
-            // còn nếu bạn muốn theo filter năm/tháng thì dùng cái này:
             long newBookings = bookingRepo.countFilteredBookings(queryYear, queryMonth, queryCity, queryOwnerId);
 
-            // 2) Charts (luôn 12 tháng, không lọc theo month)
             List<DashboardDataDTO.ChartData> revenueChart =
                     processChartData(bookingRepo.getFilteredMonthlyRevenue(queryYear, queryCity, queryOwnerId));
 
@@ -124,9 +102,8 @@ public class AdminApplicationController {
                     processChartData(bookingRepo.getFilteredMonthlyBookingCount(queryYear, queryCity, queryOwnerId));
 
             List<DashboardDataDTO.ChartData> userGrowth =
-                    processChartData(userRepo.getMonthlyUserGrowth(queryYear)); // giữ nguyên (không filter)
+                    processChartData(userRepo.getMonthlyUserGrowth(queryYear));
 
-            // 3) Pie chart
             List<Object[]> typeData =
                     bookingRepo.getFilteredRevenueByPropertyType(queryYear, queryMonth, queryCity, queryOwnerId);
 
@@ -140,7 +117,6 @@ public class AdminApplicationController {
                 }
             }
 
-            // 4) Top hotels + Recent bookings: bạn đang để global (không filter) thì giữ nguyên
             List<Object[]> topHotelsRaw = bookingRepo.getTopPerformingHotels(PageRequest.of(0, 5));
             List<DashboardDataDTO.TopHotelDTO> topHotels = new ArrayList<>();
             if (topHotelsRaw != null) {
@@ -185,6 +161,7 @@ public class AdminApplicationController {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Lỗi Server: " + e.getMessage()));
         }
     }
+    
     @GetMapping("/dashboard/owners")
     public ResponseEntity<?> getOwnersForFilter() {
         return ResponseEntity.ok(
@@ -205,15 +182,10 @@ public class AdminApplicationController {
         );
     }
 
-
-    // ========================================================================
-    // HELPER: Điền dữ liệu cho đủ 12 tháng (Tránh biểu đồ bị gãy khúc)
-    // ========================================================================
     private List<DashboardDataDTO.ChartData> processChartData(List<Object[]> rawData) {
         Map<Integer, Number> dataMap = new HashMap<>();
         if (rawData != null) {
             for (Object[] row : rawData) {
-                // row[0] là tháng (Integer), row[1] là giá trị (BigDecimal hoặc Long)
                 dataMap.put((Integer) row[0], (Number) row[1]);
             }
         }

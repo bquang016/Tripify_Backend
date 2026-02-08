@@ -1,286 +1,283 @@
 package com.example.smart_booking_system.service.impl;
 
-import com.example.smart_booking_system.enums.NotificationType;
+import com.example.smart_booking_system.dto.internal.OwnerApplicationData;
+import com.example.smart_booking_system.dto.request.OwnerApplicationRequest;
+import com.example.smart_booking_system.dto.response.admin.OwnerApplicationDTO;
+import com.example.smart_booking_system.entity.*;
+import com.example.smart_booking_system.enums.ApplicationStatus;
+import com.example.smart_booking_system.enums.PropertyStatus;
+import com.example.smart_booking_system.enums.RoomStatus;
+import com.example.smart_booking_system.exception.BadRequestException;
+import com.example.smart_booking_system.exception.InternalServerException;
+import com.example.smart_booking_system.exception.ResourceNotFoundException;
+import com.example.smart_booking_system.repository.*;
 import com.example.smart_booking_system.service.EmailService;
 import com.example.smart_booking_system.service.FileStorageService;
-import com.example.smart_booking_system.dto.request.application.OwnerApplicationSubmitDTO;
-import com.example.smart_booking_system.dto.request.admin.OwnerApplicationReviewDTO;
-import com.example.smart_booking_system.dto.response.admin.OwnerApplicationDTO;
-import com.example.smart_booking_system.entity.OwnerApplication;
-import com.example.smart_booking_system.entity.User;
-import com.example.smart_booking_system.enums.ApplicationStatus;
-import com.example.smart_booking_system.repository.OwnerApplicationRepository;
-import com.example.smart_booking_system.repository.UserRepository;
 import com.example.smart_booking_system.service.OwnerApplicationService;
-import jakarta.persistence.EntityNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.smart_booking_system.service.NotificationService;
+import org.thymeleaf.context.Context;
 
+import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.thymeleaf.context.Context;
-import java.time.format.DateTimeFormatter;
-import com.example.smart_booking_system.repository.RoleRepository;
-import com.example.smart_booking_system.entity.Role;
-
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class OwnerApplicationServiceImpl implements OwnerApplicationService {
 
-    private final OwnerApplicationRepository applicationRepository;
+    private final OwnerApplicationRepository ownerApplicationRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;
     private final RoleRepository roleRepository;
-    private final NotificationService notificationService;
-
-
-    // 🔥 Dùng để upload + generate signed URL
+    private final UserDetailRepository userDetailRepository;
+    private final PropertyRepository propertyRepository;
+    private final PropertyPoliciesRepository propertyPoliciesRepository;
+    private final PropertyImageRepository propertyImageRepository;
+    private final AmenityRepository amenityRepository;
+    private final PropertyAmenityRepository propertyAmenityRepository;
+    private final RoomRepository roomRepository;
+    private final RoomImageRepository roomImageRepository;
+    private final PaymentDetailRepository paymentDetailRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
+    private final EmailService emailService;
     private final FileStorageService fileStorageService;
 
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     @Override
-    public OwnerApplicationDTO submitApplication(OwnerApplicationSubmitDTO submitDTO, String applicantUsername) {
+    @Transactional
+    public void approveApplication(Long applicationId, String adminUsername) {
+        OwnerApplication application = ownerApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
 
-        User applicant = userRepository.findByEmail(applicantUsername)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + applicantUsername));
-
-        OwnerApplication application = new OwnerApplication();
-        application.setUserId(applicant);
-
-        application.setPermanentAddress(submitDTO.getPermanentAddress());
-        application.setHometownAddress(submitDTO.getHometownAddress());
-        application.setBusinessLicenseNumber(submitDTO.getBusinessLicenseNumber());
-        application.setPersonalDob(submitDTO.getPersonalDob());
-        application.setPersonalIdCard(submitDTO.getPersonalIdCard());
-
-        // ============================
-        // 📌 UPLOAD ẢNH (Giữ nguyên logic upload)
-        // ============================
-        String frontUrl = fileStorageService.storeImageFile(
-                submitDTO.getCardFrontImage(),
-                "owner-applications/card-front"
-        );
-
-        String backUrl = fileStorageService.storeImageFile(
-                submitDTO.getCardBackImage(),
-                "owner-applications/card-back"
-        );
-
-        String licenseUrl = fileStorageService.storeImageFile(
-                submitDTO.getBusinessLicenseImage(),
-                "owner-applications/business-license"
-        );
-
-        application.setCardFrontImage(frontUrl);
-        application.setCardBackImage(backUrl);
-        application.setBusinessLicenseImage(licenseUrl);
-
-        OwnerApplication savedApp = applicationRepository.save(application);
-
-        try {
-            notificationService.sendToAllAdmins(
-                    "Đơn đăng ký Owner mới",
-                    "Người dùng " + applicant.getFullName() + " vừa nộp đơn đăng ký đối tác.",
-                    NotificationType.ADMIN_NEW_OWNER_REGISTRATION,
-                    savedApp.getId().toString()
-            );
-        } catch (Exception e) {
-            System.err.println("Lỗi gửi thông báo admin: " + e.getMessage());
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new BadRequestException("This application has already been reviewed.");
         }
 
-        // Email giữ nguyên
         try {
-            String subject = "Xác nhận nộp đơn đăng ký làm chủ khách sạn";
-            String templateName = "email/application-submitted-confirmation";
+            OwnerApplicationData data = objectMapper.readValue(application.getApplicationData(), OwnerApplicationData.class);
 
+            // 1. Generate random password
+            String randomPassword = generateRandomPassword();
+
+            // 2. Create and save User
+            Role ownerRole = roleRepository.findByRoleName("OWNER")
+                    .orElseThrow(() -> new InternalServerException("Role 'OWNER' not found."));
+            User newUser = new User();
+            newUser.setEmail(application.getEmail());
+            newUser.setFullName(data.getFullName());
+            newUser.setPhoneNumber(data.getPhoneNumber());
+            newUser.setPasswordHash(passwordEncoder.encode(randomPassword));
+            newUser.addRole(ownerRole);
+            newUser.setIsEmailVerified(true);
+            newUser.setStatus("ACTIVE");
+            User savedUser = userRepository.save(newUser);
+
+            // 3. Create and save UserDetail
+            UserDetail userDetail = new UserDetail();
+            userDetail.setUser(savedUser);
+            userDetail.setIdentityCardNumber(data.getIdentityCardNumber());
+            userDetail.setDateOfBirth(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+            userDetail.setGender(data.getGender());
+            userDetail.setAddress(data.getAddress());
+            userDetail.setCity(data.getCity());
+            userDetail.setProfilePhotoUrl(data.getAvatarUrl());
+            userDetail.setCccdFrontUrl(data.getCccdFrontUrl());
+            userDetail.setCccdBackUrl(data.getCccdBackUrl());
+            userDetailRepository.save(userDetail);
+            
+            // 4. Create and save Property and related entities
+            OwnerApplicationRequest.PropertyInfo propertyInfo = data.getPropertyInfo();
+            Property property = new Property();
+            property.setOwner(savedUser);
+            property.setPropertyType(propertyInfo.getPropertyType());
+            property.setPropertyName(propertyInfo.getPropertyName());
+            property.setDescription(propertyInfo.getDescription());
+            property.setAddress(propertyInfo.getPropertyAddress());
+            property.setCity(propertyInfo.getPropertyCity());
+            property.setDistrict(propertyInfo.getPropertyDistrict());
+            property.setWard(propertyInfo.getPropertyWard());
+            property.setLatitude(java.math.BigDecimal.valueOf(propertyInfo.getLatitude()));
+            property.setLongitude(java.math.BigDecimal.valueOf(propertyInfo.getLongitude()));
+            property.setBusinessLicenseNumber(propertyInfo.getBusinessLicenseNumber());
+            property.setBusinessLicenseImageUrl(data.getBusinessLicenseImageUrl());
+            property.setPropertyStatus(PropertyStatus.APPROVE);
+            Property savedProperty = propertyRepository.save(property);
+
+            // Property Images
+            if (data.getPropertyImageUrls() != null) {
+                List<PropertyImage> propertyImageList = data.getPropertyImageUrls().stream().map(url -> {
+                    PropertyImage img = new PropertyImage();
+                    img.setProperty(savedProperty);
+                    img.setImageUrl(url);
+                    return img;
+                }).collect(Collectors.toList());
+                propertyImageRepository.saveAll(propertyImageList);
+            }
+
+            // Property Policies
+            OwnerApplicationRequest.PolicyData policyData = propertyInfo.getPolicies();
+            if (policyData != null) {
+                PropertyPolicies policies = new PropertyPolicies();
+                policies.setPropertyId(savedProperty);
+                policies.setCheckInTime(LocalTime.parse(policyData.getCheckInTime(), TIME_FORMATTER));
+                policies.setCheckOutTime(LocalTime.parse(policyData.getCheckOutTime(), TIME_FORMATTER));
+                policies.setMinimumAge(policyData.getMinimumAge());
+                policies.setAllowFreeCancellation(policyData.isAllowFreeCancellation());
+                policies.setFreeCancellationDays(policyData.getFreeCancellationDays());
+                propertyPoliciesRepository.save(policies);
+            }
+            
+            // Property Amenities
+            if (propertyInfo.getAmenityIds() != null && !propertyInfo.getAmenityIds().isEmpty()) {
+                List<Amenity> amenities = amenityRepository.findAllById(propertyInfo.getAmenityIds().stream().map(Integer::parseInt).collect(Collectors.toList()));
+                List<PropertyAmenity> propertyAmenities = amenities.stream().map(amenity -> {
+                    PropertyAmenity pa = new PropertyAmenity();
+                    pa.setProperty(savedProperty);
+                    pa.setAmenity(amenity);
+                    return pa;
+                }).collect(Collectors.toList());
+                propertyAmenityRepository.saveAll(propertyAmenities);
+            }
+
+            // Rooms/Units for VILLA/HOMESTAY
+            if (propertyInfo.getPropertyType() == com.example.smart_booking_system.enums.PropertyType.VILLA ||
+                propertyInfo.getPropertyType() == com.example.smart_booking_system.enums.PropertyType.HOMESTAY) {
+                Room unit = new Room();
+                unit.setProperty(savedProperty);
+                unit.setRoomName(propertyInfo.getUnitData() != null ? propertyInfo.getUnitData().getName() : "Căn " + savedProperty.getPropertyName());
+                unit.setPricePerNight(propertyInfo.getPrice());
+                unit.setWeekendPrice(propertyInfo.getWeekendPrice());
+                unit.setCapacity(propertyInfo.getCapacity());
+                unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getArea()));
+                unit.setRoomStatus(RoomStatus.AVAILABLE);
+                unit.setRoomAmount(1);
+                Room savedUnit = roomRepository.save(unit);
+
+                if (data.getUnitImageUrls() != null) {
+                    List<RoomImage> roomImageList = data.getUnitImageUrls().stream().map(url -> {
+                        RoomImage img = new RoomImage();
+                        img.setRoom(savedUnit);
+                        img.setImageUrl(url);
+                        return img;
+                    }).collect(Collectors.toList());
+                    roomImageRepository.saveAll(roomImageList);
+                }
+            }
+
+            // 5. Create PaymentDetail
+            OwnerApplicationRequest.PaymentInfo paymentInfo = data.getPaymentInfo();
+            if (paymentInfo != null) {
+                PaymentDetail paymentDetail = new PaymentDetail();
+                paymentDetail.setUser(savedUser);
+                paymentDetail.setPaymentMethod(paymentInfo.getPaymentMethod());
+                paymentDetail.setBankName(paymentInfo.getBankName());
+                paymentDetail.setAccountHolderName(paymentInfo.getAccountHolderName());
+                paymentDetail.setAccountNumber(paymentInfo.getAccountNumber());
+                paymentDetailRepository.save(paymentDetail);
+            }
+            
+            // 6. Update Application Status
+            application.setStatus(ApplicationStatus.APPROVED);
+            application.setReviewedBy(adminUsername);
+            application.setReviewedAt(LocalDateTime.now());
+            ownerApplicationRepository.save(application);
+
+            // 7. Send Approval Email
             Context context = new Context();
-            context.setVariable("applicantName", applicant.getFullName());
-            context.setVariable("applicationId", savedApp.getId());
-
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm 'ngày' dd/MM/yyyy");
-            context.setVariable("submittedAt", savedApp.getCreatedAt().format(formatter));
-
-            emailService.sendHtmlEmail(applicant.getEmail(), subject, templateName, context);
+            context.setVariable("applicantName", data.getFullName());
+            context.setVariable("email", application.getEmail());
+            context.setVariable("password", randomPassword);
+            emailService.sendHtmlEmail(application.getEmail(), "Chúc mừng! Đơn đăng ký đối tác của bạn đã được phê duyệt", "email/application-approved", context);
 
         } catch (Exception e) {
-            System.err.println("Lỗi gửi email xác nhận nộp đơn: " + e.getMessage());
+            throw new InternalServerException("Failed to approve application: " + e.getMessage());
         }
-
-        return convertToDTO(savedApp);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<OwnerApplicationDTO> getPendingOwnerApplications() {
-        return this.getApplicationsByStatus(ApplicationStatus.PENDING);
+    @Transactional
+    public void rejectApplication(Long applicationId, String reason, String adminUsername) {
+        OwnerApplication application = ownerApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
+
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new BadRequestException("This application has already been reviewed.");
+        }
+
+        application.setStatus(ApplicationStatus.REJECTED);
+        application.setRejectionReason(reason);
+        application.setReviewedBy(adminUsername);
+        application.setReviewedAt(LocalDateTime.now());
+        ownerApplicationRepository.save(application);
+
+        String applicantName = "Applicant";
+        try {
+            OwnerApplicationData data = objectMapper.readValue(application.getApplicationData(), OwnerApplicationData.class);
+            applicantName = data.getFullName();
+        } catch (Exception e) {
+            // Ignore error, use default name
+        }
+
+        Context context = new Context();
+        context.setVariable("applicantName", applicantName);
+        context.setVariable("reason", reason);
+        emailService.sendHtmlEmail(application.getEmail(), "Thông báo: Đơn đăng ký đối tác của bạn đã bị từ chối", "email/application-rejected", context);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<OwnerApplicationDTO> getApplicationsByStatus(ApplicationStatus status) {
-        return applicationRepository.findByStatusWithApplicant(status)
-                .stream()
+        return ownerApplicationRepository.findAll().stream()
+                .filter(app -> app.getStatus() == status)
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-
-    @Override
-    public OwnerApplicationDTO reviewApplication(Long applicationId, OwnerApplicationReviewDTO reviewDTO, String adminUsername) {
-
-        User admin = userRepository.findByEmail(adminUsername)
-                .orElseThrow(() -> new EntityNotFoundException("Admin not found: " + adminUsername));
-
-        OwnerApplication application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new EntityNotFoundException("Application not found: " + applicationId));
-
-        if (application.getStatus() != ApplicationStatus.PENDING) {
-            throw new IllegalStateException("Đơn này đã được xử lý rồi.");
-        }
-
-        ApplicationStatus newStatus = reviewDTO.getStatus();
-        if (newStatus == null)
-            throw new IllegalArgumentException("Trạng thái mới không được để trống.");
-
-        if (newStatus != ApplicationStatus.APPROVED && newStatus != ApplicationStatus.REJECTED)
-            throw new IllegalArgumentException("Chỉ được chuyển sang APPROVED hoặc REJECTED.");
-
-        application.setAdminReason(reviewDTO.getReason());
-        application.setStatus(newStatus);
-        application.setReviewedAt(LocalDateTime.now());
-        application.setReviewedBy(admin);
-
-        User applicant = application.getUserId();
-
-        if (newStatus == ApplicationStatus.APPROVED) {
-            Role ownerRole = roleRepository.findByRoleName("OWNER")
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy ROLE_OWNER"));
-
-            applicant.addRole(ownerRole);
-            userRepository.save(applicant);
-        }
-
-        OwnerApplication savedApp = applicationRepository.save(application);
-
-        // [BỔ SUNG] Gửi thông báo In-App cho User (Applicant)
-        if (applicant != null) {
-            // 1. Gửi email (code cũ)
-            sendReviewNotificationEmail(applicant, savedApp);
-
-            // 2. Gửi thông báo hệ thống (code mới)
-            try {
-                if (newStatus == ApplicationStatus.APPROVED) {
-                    notificationService.sendNotification(
-                            applicant.getUserId(),
-                            "Đơn đăng ký Owner được chấp thuận",
-                            "Chúc mừng! Bạn đã chính thức trở thành đối tác. Hãy bắt đầu đăng tải khách sạn ngay.",
-                            NotificationType.APPROVAL,
-                            savedApp.getId().toString()
-                    );
-                } else if (newStatus == ApplicationStatus.REJECTED) {
-                    notificationService.sendNotification(
-                            applicant.getUserId(),
-                            "Đơn đăng ký Owner bị từ chối",
-                            "Lý do: " + (reviewDTO.getReason() != null ? reviewDTO.getReason() : "Không có lý do cụ thể"),
-                            NotificationType.REJECTION,
-                            savedApp.getId().toString()
-                    );
-                }
-            } catch (Exception e) {
-                System.err.println("Lỗi gửi thông báo user: " + e.getMessage());
-            }
-        }
-
-        return convertToDTO(savedApp);
-    }
-
-    // ============================================================
-    // 🔥 FIX QUAN TRỌNG: Trả về Signed URL cho 3 ảnh
-    // ============================================================
+    
     private OwnerApplicationDTO convertToDTO(OwnerApplication app) {
-
-        OwnerApplicationDTO dto = new OwnerApplicationDTO();
-        dto.setId(app.getId());
-        dto.setStatus(app.getStatus());
-        dto.setPermanentAddress(app.getPermanentAddress());
-        dto.setHometownAddress(app.getHometownAddress());
-
-        // ============================
-        // 🔥 Ảnh trả về signed URL để FE load được
-        // ============================
-        dto.setCardFrontImage(
-                fileStorageService.generateSignedUrl(app.getCardFrontImage())
-        );
-
-        dto.setCardBackImage(
-                fileStorageService.generateSignedUrl(app.getCardBackImage())
-        );
-
-        dto.setBusinessLicenseImage(
-                fileStorageService.generateSignedUrl(app.getBusinessLicenseImage())
-        );
-
-        dto.setBusinessLicenseNumber(app.getBusinessLicenseNumber());
-        dto.setApplicantDob(app.getPersonalDob());
-        dto.setPersonalIdCard(app.getPersonalIdCard());
-        dto.setCreatedAt(app.getCreatedAt());
-        dto.setReviewedAt(app.getReviewedAt());
-        dto.setAdminReason(app.getAdminReason());
-
-        if (app.getUserId() != null) {
-            User applicant = app.getUserId();
-
-            dto.setApplicantId(applicant.getUserId());
-            dto.setApplicantFullName(applicant.getFullName());
-            dto.setApplicantEmail(applicant.getEmail());
-            dto.setApplicantPhoneNumber(applicant.getPhoneNumber());
-
-            if (applicant.getUserDetail() != null &&
-                    applicant.getUserDetail().getProfilePhotoUrl() != null) {
-
-                dto.setApplicantAvatar(
-                        fileStorageService.generateSignedUrl(
-                                applicant.getUserDetail().getProfilePhotoUrl()
-                        )
-                );
+        try {
+            OwnerApplicationData data = objectMapper.readValue(app.getApplicationData(), OwnerApplicationData.class);
+            OwnerApplicationDTO dto = new OwnerApplicationDTO();
+            dto.setId(app.getId());
+            dto.setStatus(app.getStatus());
+            dto.setApplicantEmail(app.getEmail());
+            dto.setApplicantFullName(data.getFullName());
+            dto.setApplicantPhoneNumber(data.getPhoneNumber());
+            dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+            dto.setPersonalIdCard(data.getIdentityCardNumber());
+            dto.setCreatedAt(app.getCreatedAt());
+            dto.setReviewedAt(app.getReviewedAt());
+            dto.setAdminReason(app.getRejectionReason());
+            if (app.getReviewedBy() != null) {
+                dto.setReviewedByAdminName(app.getReviewedBy());
             }
+            // In a real app, you would also map property info etc.
+            return dto;
+        } catch(Exception e) {
+            // Create a simpler DTO if parsing fails
+            OwnerApplicationDTO dto = new OwnerApplicationDTO();
+            dto.setId(app.getId());
+            dto.setStatus(app.getStatus());
+            dto.setApplicantEmail(app.getEmail());
+            return dto;
         }
-
-        if (app.getReviewedBy() != null) {
-            dto.setReviewedByAdminName(app.getReviewedBy().getFullName());
-        }
-
-        return dto;
     }
 
-    private void sendReviewNotificationEmail(User applicant, OwnerApplication application) {
-
-        String applicantEmail = applicant.getEmail();
-        String applicantName = applicant.getFullName();
-        String adminReason = application.getAdminReason();
-        ApplicationStatus status = application.getStatus();
-
-        Context context = new Context();
-        context.setVariable("applicantName", applicantName);
-        context.setVariable("reason", adminReason != null && !adminReason.isEmpty() ? adminReason : "N/A");
-
-        String subject, templateName;
-
-        if (status == ApplicationStatus.APPROVED) {
-            subject = "Chúc mừng! Đơn đăng ký làm chủ khách sạn của bạn đã được DUYỆT";
-            templateName = "email/application-approved";
-
-        } else if (status == ApplicationStatus.REJECTED) {
-            subject = "Thông báo: Đơn đăng ký làm chủ khách sạn của bạn đã bị TỪ CHỐI";
-            templateName = "email/application-rejected";
-
-        } else {
-            return;
-        }
-
-        emailService.sendHtmlEmail(applicantEmail, subject, templateName, context);
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+        SecureRandom random = new SecureRandom();
+        return random.ints(12, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
     }
 }

@@ -2,6 +2,7 @@ package com.example.smart_booking_system.service;
 
 import com.example.smart_booking_system.dto.request.auth.*;
 import com.example.smart_booking_system.dto.response.auth.LoginResponse;
+import com.example.smart_booking_system.dto.response.auth.VerifyOwnerOtpResponse;
 import com.example.smart_booking_system.entity.User;
 
 public interface AuthService {
@@ -28,6 +29,9 @@ public interface AuthService {
 
     boolean verifyOtp(String email, String code);
 
-    void sendOwnerRegistrationOtp(String email);
-    LoginResponse verifyOwnerOtpAndRegister(OwnerRegisterRequest request);
+    void sendOwnerOtp(String email); // Renamed
+
+    VerifyOwnerOtpResponse verifyOwnerOtp(VerifyOtpRequest request); // New method
+
+    void checkOwnerEmail(String email);
 }
