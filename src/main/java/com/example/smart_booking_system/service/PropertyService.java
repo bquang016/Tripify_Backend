@@ -3,6 +3,7 @@ package com.example.smart_booking_system.service;
 import com.example.smart_booking_system.dto.PropertyResponseDTO;
 import com.example.smart_booking_system.dto.request.admin.PropertyReviewDTO;
 import com.example.smart_booking_system.dto.request.property.PropertyApplicationSubmitDTO;
+import com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest;
 import com.example.smart_booking_system.dto.response.property.PropertyDetailDTO;
 import com.example.smart_booking_system.dto.response.property.PropertyMapDTO;
 import com.example.smart_booking_system.entity.Property;
@@ -73,4 +74,6 @@ public interface PropertyService {
             boolean isManager,
             Pageable pageable
     );
+    PropertyDetailDTO registerProperty(com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest request, String ownerId);
+
 }

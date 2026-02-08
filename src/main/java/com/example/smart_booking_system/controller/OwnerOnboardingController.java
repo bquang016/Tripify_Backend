@@ -1,12 +1,11 @@
 package com.example.smart_booking_system.controller;
 
-import com.example.smart_booking_system.dto.request.owner.OwnerProfileRequest;
+import com.example.smart_booking_system.dto.request.FullOnboardingRequest;
 import com.example.smart_booking_system.dto.response.ApiResponse;
-import com.example.smart_booking_system.entity.User;
-import com.example.smart_booking_system.repository.UserRepository;
 import com.example.smart_booking_system.security.CustomUserDetails;
-import com.example.smart_booking_system.service.UserDetailService;
-import com.fasterxml.jackson.databind.ObjectMapper; // Cần import cái này để parse JSON string
+import com.example.smart_booking_system.service.OwnerOnboardingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,42 +13,53 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/owner/onboarding")
 @RequiredArgsConstructor
 public class OwnerOnboardingController {
 
-    private final UserDetailService userDetailService;
-    private final UserRepository userRepository;
+    private final OwnerOnboardingService ownerOnboardingService;
+    private final ObjectMapper objectMapper;
 
-    // SỬA: Chuyển sang nhận MultipartFile
-    @PostMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Void>> updateProfile(
+    @PostMapping(value = "/register-full", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Void>> registerFull(
             @AuthenticationPrincipal CustomUserDetails currentUser,
-            // Nhận JSON string và convert sang Object (vì FormData không gửi lồng Object được)
-            @RequestPart("data") String dataString,
+            @RequestPart("data") String jsonData,
+            // Files from Step 1
             @RequestPart(value = "avatar", required = false) MultipartFile avatar,
-            @RequestPart(value = "cccdFront") MultipartFile cccdFront,
-            @RequestPart(value = "cccdBack") MultipartFile cccdBack
+            @RequestPart("cccdFront") MultipartFile cccdFront,
+            @RequestPart("cccdBack") MultipartFile cccdBack,
+            // Files from Step 2
+            @RequestPart("propertyImages") List<MultipartFile> propertyImages,
+            @RequestPart("businessLicenseImage") MultipartFile businessLicenseImage,
+            @RequestPart(name = "unitImages", required = false) List<MultipartFile> unitImages
     ) {
         try {
-            // 1. Convert String JSON -> DTO
-            ObjectMapper mapper = new ObjectMapper();
-            // Cần đăng ký module JavaTimeModule nếu DTO có LocalDate
-            mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
-            OwnerProfileRequest request = mapper.readValue(dataString, OwnerProfileRequest.class);
+            objectMapper.registerModule(new JavaTimeModule());
+            FullOnboardingRequest request = objectMapper.readValue(jsonData, FullOnboardingRequest.class);
 
-            // 2. Lấy User
-            User user = userRepository.findById(currentUser.getUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            ownerOnboardingService.registerFull(
+                    currentUser.getUserId(),
+                    request,
+                    avatar,
+                    cccdFront,
+                    cccdBack,
+                    propertyImages,
+                    businessLicenseImage,
+                    unitImages
+            );
 
-            // 3. Gọi Service (Cần sửa Service để nhận thêm file ảnh)
-            userDetailService.updateOwnerProfileWithImages(user, request, avatar, cccdFront, cccdBack);
-
-            return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ thành công", null));
+            return ResponseEntity.ok(ApiResponse.success("Đăng ký thông tin đối tác thành công. Vui lòng chờ duyệt.", null));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(ApiResponse.error("Lỗi xử lý dữ liệu: " + e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lỗi cập nhật: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Lỗi hệ thống: " + e.getMessage()));
         }
     }
 }
+
