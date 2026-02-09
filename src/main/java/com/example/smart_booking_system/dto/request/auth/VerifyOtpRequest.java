@@ -1,5 +1,6 @@
 package com.example.smart_booking_system.dto.request.auth;
 
+import com.example.smart_booking_system.enums.OtpType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -16,4 +17,6 @@ public class VerifyOtpRequest {
 
     @NotBlank(message = "Mã OTP không được để trống")
     private String otp;
+
+    private OtpType type;
 }

@@ -8,26 +8,21 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "roles")
+@Table(name = "permissions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Role {
+public class Permission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer roleId;
+    private Integer permissionId;
 
     @Column(nullable = false, unique = true, length = 64)
-    private String roleName;
+    private String name;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "rolePermissions",
-            joinColumns = @JoinColumn(name = "roleId"),
-            inverseJoinColumns = @JoinColumn(name = "permissionId")
-    )
-    private java.util.Set<Permission> permissions = new java.util.HashSet<>();
+    @Column(length = 255)
+    private String description;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

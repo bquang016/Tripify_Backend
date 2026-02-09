@@ -8,6 +8,8 @@ import lombok.Setter;
 @Setter
 public class ResetPasswordRequest {
 
+    private String email;
+
     @NotBlank(message = "Token is required")
     private String token;
 

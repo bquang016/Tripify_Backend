@@ -41,6 +41,13 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRoleName()))
                 .collect(Collectors.toSet());
 
+        // Add permissions as authorities
+        user.getRoles().forEach(role -> {
+            role.getPermissions().forEach(permission -> {
+                authorities.add(new SimpleGrantedAuthority(permission.getName()));
+            });
+        });
+
         // ✅ LOGIC KIỂM TRA MẬT KHẨU
         // Mật khẩu thật (do BCrypt mã hóa) luôn bắt đầu bằng "$2a$".
         // Mật khẩu ngẫu nhiên (UUID do hệ thống tạo khi login Google/FB) sẽ không có tiền tố này.

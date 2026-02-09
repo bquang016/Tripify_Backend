@@ -10,6 +10,7 @@ import com.example.smart_booking_system.enums.PropertyStatus;
 import com.example.smart_booking_system.exception.ResourceNotFoundException;
 import com.example.smart_booking_system.service.PropertyService;
 import com.example.smart_booking_system.service.RoomService; // Inject thêm RoomService
+import com.example.smart_booking_system.security.CheckPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/properties")
 @PreAuthorize("hasRole('ADMIN')")
+@CheckPermission("PROPERTY_MANAGE")
 public class AdminPropertyController {
 
     private final PropertyService propertyService;
