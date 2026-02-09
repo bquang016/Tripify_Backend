@@ -24,6 +24,12 @@ public class OwnerApplication {
     @Column(nullable = false, unique = true)
     private String email;
 
+    private String otp;
+
+    private LocalDateTime otpExpiry;
+
+    private boolean isEmailVerified = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ApplicationStatus status;

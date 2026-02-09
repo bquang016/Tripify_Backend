@@ -63,7 +63,7 @@ public class OwnerApplicationRequest {
         private String name;
         private String description;
         // Simplified for storage, can be expanded later
-        private List<String> amenities;
+        private List<String> amenityIds;
     }
 
     @Data

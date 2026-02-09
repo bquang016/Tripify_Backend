@@ -71,12 +71,25 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void sendOwnerOtp(String email) {
-        checkOwnerEmail(email);
+        checkOwnerEmail(email); // Reuse the existing check
 
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
-        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 minutes
-        otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
+        LocalDateTime otpExpiry = LocalDateTime.now().plusMinutes(5);
+
+        com.example.smart_booking_system.entity.OwnerApplication application =
+                ownerApplicationRepository.findByEmail(email).orElseGet(() -> {
+                    com.example.smart_booking_system.entity.OwnerApplication newApp = new com.example.smart_booking_system.entity.OwnerApplication();
+                    newApp.setEmail(email);
+                    newApp.setStatus(ApplicationStatus.PENDING); // Initial status
+                    return newApp;
+                });
+
+        application.setOtp(otpCode);
+        application.setOtpExpiry(otpExpiry);
+        application.setEmailVerified(false); // Reset verification status on new OTP request
+        ownerApplicationRepository.save(application);
 
         Context context = new Context();
         context.setVariable("otpCode", otpCode);
@@ -87,13 +100,25 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public VerifyOwnerOtpResponse verifyOwnerOtp(VerifyOtpRequest request) {
-        OtpInfo info = otpStorage.get(request.getEmail());
-        if (info == null || !info.getCode().equals(request.getOtpCode()) || System.currentTimeMillis() > info.getExpiryTime()) {
+        com.example.smart_booking_system.entity.OwnerApplication application = ownerApplicationRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Yêu cầu không hợp lệ. Vui lòng thử lại từ đầu."));
+
+        if (application.getOtp() == null ||
+            !application.getOtp().equals(request.getOtpCode()) ||
+            application.getOtpExpiry() == null ||
+            application.getOtpExpiry().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
-        otpStorage.remove(request.getEmail());
 
+        // OTP is valid, update application
+        application.setEmailVerified(true);
+        application.setOtp(null);
+        application.setOtpExpiry(null);
+        ownerApplicationRepository.save(application);
+
+        // Generate and return the temporary token for the next steps
         String temporaryToken = tokenProvider.generateTemporaryToken(request.getEmail());
         return new VerifyOwnerOtpResponse(temporaryToken);
     }

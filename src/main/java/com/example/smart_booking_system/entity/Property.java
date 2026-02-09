@@ -79,7 +79,7 @@ public class Property {
     private PropertyStatus propertyStatus;
 
     private String businessLicenseNumber;
-    private String businessLicenseImageUrl;
+    private String businessLicenseImage;
 
     private LocalDate createdAt = LocalDate.now();
     private LocalDate updatedAt = LocalDate.now();

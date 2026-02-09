@@ -110,8 +110,9 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             property.setLatitude(java.math.BigDecimal.valueOf(propertyInfo.getLatitude()));
             property.setLongitude(java.math.BigDecimal.valueOf(propertyInfo.getLongitude()));
             property.setBusinessLicenseNumber(propertyInfo.getBusinessLicenseNumber());
-            property.setBusinessLicenseImageUrl(data.getBusinessLicenseImageUrl());
+            property.setBusinessLicenseImage(data.getBusinessLicenseImage());
             property.setPropertyStatus(PropertyStatus.APPROVE);
+            property.setActive(true); // Activate the property immediately
             Property savedProperty = propertyRepository.save(property);
 
             // Property Images
@@ -233,6 +234,9 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
         context.setVariable("applicantName", applicantName);
         context.setVariable("reason", reason);
         emailService.sendHtmlEmail(application.getEmail(), "Thông báo: Đơn đăng ký đối tác của bạn đã bị từ chối", "email/application-rejected", context);
+
+        // Delete the application to free up the email for future registrations
+        ownerApplicationRepository.delete(application);
     }
 
     @Override

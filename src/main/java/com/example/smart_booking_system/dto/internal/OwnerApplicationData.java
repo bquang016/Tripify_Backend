@@ -31,7 +31,7 @@ public class OwnerApplicationData {
 
     // Property Info
     private OwnerApplicationRequest.PropertyInfo propertyInfo;
-    private String businessLicenseImageUrl;
+    private String businessLicenseImage;
     private List<String> propertyImageUrls;
     private List<String> unitImageUrls;
 

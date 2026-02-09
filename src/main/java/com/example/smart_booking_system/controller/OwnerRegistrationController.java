@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/owner-registration")
+@RequestMapping("/api/v1/owner/register")
 @RequiredArgsConstructor
 public class OwnerRegistrationController {
 
@@ -23,7 +23,7 @@ public class OwnerRegistrationController {
     @PostMapping("/submit")
     public ResponseEntity<ApiResponse<Void>> submitApplication(
             @RequestHeader("Authorization") String temporaryToken,
-            @RequestPart("data") String jsonData,
+            @RequestPart("request") String jsonData,
             @RequestPart(value = "avatar", required = false) MultipartFile avatar,
             @RequestPart("cccdFront") MultipartFile cccdFront,
             @RequestPart("cccdBack") MultipartFile cccdBack,

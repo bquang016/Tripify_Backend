@@ -93,6 +93,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/properties/{id}").permitAll()
                         .requestMatchers("/api/v1/payments/**").authenticated()
                         .requestMatchers("/api/v1/auth/owner/**").permitAll()
+                        .requestMatchers("/api/v1/owner/register/**").permitAll()
                         .requestMatchers("/api/v1/owner-registration/**").permitAll()
 
                         // ===== 2. GENERAL AUTHENTICATED ROUTES =====

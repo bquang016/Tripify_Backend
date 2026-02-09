@@ -47,13 +47,26 @@ public class OwnerRegistrationServiceImpl implements OwnerRegistrationService {
         if (temporaryToken == null || !temporaryToken.startsWith("Bearer ")) {
             throw new BadRequestException("Missing or invalid temporary token.");
         }
-        String token = temporaryToken.substring(7);
-
-        if (!jwtTokenProvider.validateToken(token)) {
-            throw new BadRequestException("Temporary token is invalid or expired.");
+        String token = temporaryToken.substring(7).trim();
+        if (token.isEmpty()) {
+            throw new BadRequestException("Temporary token is empty.");
         }
 
-        String email = jwtTokenProvider.getEmailFromToken(token);
+        String email;
+        try {
+            // getEmailFromToken will throw ExpiredJwtException, SignatureException, etc. if token is invalid
+            email = jwtTokenProvider.getEmailFromToken(token);
+            
+            String type = jwtTokenProvider.getClaimFromToken(token, "type", String.class);
+            if (!"temporary".equals(type)) {
+                throw new BadRequestException("Invalid token type. Expected a temporary registration token.");
+            }
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BadRequestException("Temporary token error: " + e.getMessage());
+        }
+
         if (email == null) {
             throw new BadRequestException("Invalid temporary token payload.");
         }
@@ -92,7 +105,7 @@ public class OwnerRegistrationServiceImpl implements OwnerRegistrationService {
                 .cccdFrontUrl(cccdFrontUrl)
                 .cccdBackUrl(cccdBackUrl)
                 .propertyInfo(request.getPropertyInfo())
-                .businessLicenseImageUrl(businessLicenseImageUrl)
+                .businessLicenseImage(businessLicenseImageUrl)
                 .propertyImageUrls(propertyImageUrls)
                 .unitImageUrls(unitImageUrls)
                 .paymentInfo(request.getPaymentInfo())

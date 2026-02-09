@@ -46,6 +46,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // nếu chưa bị thu hồi thì kiểm tra token có hợp lệ không
                 if (jwtUtil.validateToken(token)) {
+                    String type = null;
+                    try {
+                        type = jwtUtil.getClaimFromToken(token, "type", String.class);
+                    } catch (Exception ignored) {}
+
+                    if ("temporary".equals(type)) {
+                        // Skip user loading for temporary registration tokens
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+
                     String userId = jwtUtil.getUserIdFromToken(token);
 
                     if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
