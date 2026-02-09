@@ -122,13 +122,13 @@ public class RatingController {
     }
 
     // Giữ nguyên logic delete/hide nhưng có thể đổi return type nếu cần
-    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER', 'OWNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER', 'OWNER', 'SUPER_ADMIN')")
     @DeleteMapping("/delete/{id}")
     public void deleteRating(@PathVariable int id) {
         ratingService.deleteRating(id);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @PatchMapping("/hide/{id}")
     public ResponseEntity<RatingResponseDTO> hideRating(
             @PathVariable int id,
@@ -137,7 +137,7 @@ public class RatingController {
         return ResponseEntity.ok(mapToDTO(ratingService.hideRating(id, hide)));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
     @PatchMapping("/pin/{id}")
     public ResponseEntity<RatingResponseDTO> pinRating(
             @PathVariable int id,

@@ -68,9 +68,9 @@ public class User {
     // Many-to-Many with Role
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "userRoles",
-            joinColumns = @JoinColumn(name = "userId"),
-            inverseJoinColumns = @JoinColumn(name = "roleId")
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
 
@@ -97,7 +97,7 @@ public class User {
     }
 
     public boolean hasRole(String roleName) {
-        return roles.stream().anyMatch(r -> r.getRoleName().equalsIgnoreCase(roleName));
+        return roles.stream().anyMatch(r -> r.getName().equalsIgnoreCase(roleName));
     }
 
     @Enumerated(EnumType.STRING)

@@ -27,7 +27,7 @@ public class AmenityController {
 
     // ADD
     @PostMapping("/add")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> addAmenity(@RequestBody Amenity amenity) {
         try {
             Amenity saved = amenityService.addAmenity(amenity);
@@ -44,7 +44,7 @@ public class AmenityController {
 
     // UPDATE
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateAmenity(
             @PathVariable int id,
             @RequestBody Amenity amenity) {
@@ -87,7 +87,7 @@ public class AmenityController {
 
     // DELETE (SOFT)
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> deleteAmenity(@PathVariable int id) {
         try {
             amenityService.deactivateAmenity(id);

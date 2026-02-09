@@ -101,7 +101,8 @@ public class SecurityConfig {
                         ).authenticated()
 
                         // ===== 3. ADMIN ROUTES =====
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/v1/roles/**", "/api/v1/permissions/**").hasRole("SUPER_ADMIN")
 
                         // ===== 4. OWNER ROUTES =====
                         .requestMatchers("/api/v1/properties/submit-application").hasRole("OWNER")
@@ -112,9 +113,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/applications/owner/**").hasRole("CUSTOMER")
 
                         // ===== 6. MIXED/COMBO ROUTES (Owner & Admin) =====
-                        .requestMatchers("/api/v1/properties/add").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers("/api/v1/properties/update/**").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers("/api/v1/room/**").hasAnyRole("OWNER", "ADMIN")
+                        .requestMatchers("/api/v1/properties/add").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/v1/properties/update/**").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/v1/room/**").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")
 
                         // ===== 7. DEFAULT =====
                         .anyRequest().authenticated()

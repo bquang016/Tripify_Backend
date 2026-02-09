@@ -156,7 +156,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
         User applicant = application.getUserId();
 
         if (newStatus == ApplicationStatus.APPROVED) {
-            Role ownerRole = roleRepository.findByRoleName("OWNER")
+            Role ownerRole = roleRepository.findByName("OWNER")
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy ROLE_OWNER"));
 
             applicant.addRole(ownerRole);

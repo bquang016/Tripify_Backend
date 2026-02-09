@@ -39,7 +39,7 @@ public class PropertyController {
     private final SearchHistoryService searchHistoryService;
 
     @PostMapping("/add")
-    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('OWNER') or hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> addProperty(@RequestBody Property property, Authentication authentication) {
         try {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -106,7 +106,7 @@ public class PropertyController {
     }
 
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('OWNER') or hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateProperty(
             @PathVariable int id,
             @RequestBody Property updatedProperty

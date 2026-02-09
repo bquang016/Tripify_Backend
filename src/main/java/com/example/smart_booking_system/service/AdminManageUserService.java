@@ -79,7 +79,7 @@ public class AdminManageUserService {
                 user.getPoints(),
                 user.getMembershipRank(),
                 user.getCreatedAt(),
-                user.getRoles().stream().map(r -> r.getRoleName()).collect(Collectors.toSet())
+                user.getRoles().stream().map(r -> r.getName()).collect(Collectors.toSet())
         );
     }
 }

@@ -53,7 +53,7 @@ public class PaymentController {
 
     // 4. Admin xử lý hoàn tiền
     @PutMapping("/refund-process/{requestId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> processRefund(
             @PathVariable int requestId,
             @RequestParam boolean approve,
@@ -64,7 +64,7 @@ public class PaymentController {
 
     // 5. Admin xem tất cả giao dịch
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> getAllTransactions() {
         return ResponseEntity.ok(paymentService.getAllTransactions());
     }

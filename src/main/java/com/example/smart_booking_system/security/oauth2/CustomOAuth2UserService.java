@@ -157,7 +157,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setStatus("ACTIVE");
         }
         user.setPasswordHash(UUID.randomUUID().toString());
-        Role userRole = roleRepository.findByRoleName("CUSTOMER")
+        Role userRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() -> new InternalAuthenticationServiceException("Role 'CUSTOMER' not set."));
         user.addRole(userRole);
         UserDetail userDetail = new UserDetail();

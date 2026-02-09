@@ -27,7 +27,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/properties")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 @CheckPermission("PROPERTY_MANAGE")
 public class AdminPropertyController {
 

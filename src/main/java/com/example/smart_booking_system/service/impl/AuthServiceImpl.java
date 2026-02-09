@@ -127,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
         // Dùng AuthProvider.local (chữ thường - khớp với Enum của bạn)
         user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
 
-        Role ownerRole = roleRepository.findByRoleName("OWNER")
+        Role ownerRole = roleRepository.findByName("OWNER")
                 .orElseThrow(() -> new ResourceNotFoundException("Role OWNER not found"));
         user.addRole(ownerRole);
 
@@ -277,7 +277,7 @@ public class AuthServiceImpl implements AuthService {
         user.setIsEmailVerified(true); // Đã xác thực qua OTP
         user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
 
-        Role customerRole = roleRepository.findByRoleName("CUSTOMER")
+        Role customerRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() -> new ResourceNotFoundException("Role 'CUSTOMER' not found"));
         user.addRole(customerRole);
 

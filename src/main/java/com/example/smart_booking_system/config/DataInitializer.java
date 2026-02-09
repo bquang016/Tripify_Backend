@@ -43,47 +43,138 @@ public class DataInitializer {
     }
 
     private void initPermissions() {
-        List<String> permissions = List.of(
-                "SYSTEM_LOG_VIEW",
-                "USER_MANAGE",
-                "PROPERTY_MANAGE",
-                "BOOKING_MANAGE",
-                "REPORTS_VIEW"
-        );
+        // Lấy tất cả permission hiện có để check in-memory, tránh crash nếu cột code chưa tồn tại trong DB
+        // Tuy nhiên, nếu cột 'code' chưa tồn tại, query này vẫn có thể fail nếu JPA query mặc định dùng code.
+        // Giải pháp: Dùng native query hoặc check an toàn.
+        
+        try {
+            // Group: User Management
+            createPermissionIfNotExist("USER_VIEW", "Xem danh sách người dùng", "Quản lý người dùng");
+            createPermissionIfNotExist("USER_CREATE", "Tạo mới người dùng", "Quản lý người dùng");
+            createPermissionIfNotExist("USER_UPDATE", "Cập nhật người dùng", "Quản lý người dùng");
+            createPermissionIfNotExist("USER_DELETE", "Xóa người dùng", "Quản lý người dùng");
 
-        for (String pName : permissions) {
-            if (!permissionRepository.existsByName(pName)) {
-                com.example.smart_booking_system.entity.Permission p = new com.example.smart_booking_system.entity.Permission();
-                p.setName(pName);
-                p.setDescription("Quyền " + pName);
-                permissionRepository.save(p);
-                System.out.println("✅ Created default permission: " + pName);
+            // Group: Property Management
+            createPermissionIfNotExist("PROPERTY_VIEW", "Xem danh sách cơ sở lưu trú", "Quản lý khách sạn");
+            createPermissionIfNotExist("PROPERTY_APPROVE", "Phê duyệt cơ sở lưu trú", "Quản lý khách sạn");
+            createPermissionIfNotExist("PROPERTY_MANAGE", "Quản lý cơ sở lưu trú", "Quản lý khách sạn");
+
+            // Group: Booking Management
+            createPermissionIfNotExist("BOOKING_VIEW", "Xem danh sách đặt phòng", "Quản lý đặt phòng");
+            createPermissionIfNotExist("BOOKING_MANAGE", "Quản lý đặt phòng", "Quản lý đặt phòng");
+
+            // Group: System
+            createPermissionIfNotExist("SYSTEM_LOG_VIEW", "Xem log hệ thống", "Hệ thống");
+            createPermissionIfNotExist("REPORTS_VIEW", "Xem báo cáo doanh thu", "Hệ thống");
+            createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Hệ thống");
+        } catch (Exception e) {
+            System.err.println("⚠️ Warning: Could not initialize permissions. This is likely because the database schema is being updated. Please restart the application. Error: " + e.getMessage());
+        }
+    }
+
+    private void createPermissionIfNotExist(String code, String name, String groupName) {
+        boolean exists = false;
+        try {
+            exists = permissionRepository.existsByCode(code);
+        } catch (Exception e) {
+            // Nếu cột code chưa tồn tại, thử check theo name
+            try {
+                exists = permissionRepository.existsByName(name);
+            } catch (Exception e2) {
+                exists = false;
             }
+        }
+
+        if (!exists) {
+            com.example.smart_booking_system.entity.Permission p = new com.example.smart_booking_system.entity.Permission();
+            p.setCode(code);
+            p.setName(name);
+            p.setGroupName(groupName);
+            p.setDescription("Quyền " + name);
+            p.setCreatedAt(LocalDateTime.now());
+            permissionRepository.save(p);
+            System.out.println("✅ Created permission: " + code);
         }
     }
 
     private void initRoles() {
-        // Dùng tên không có tiền tố
-        List<String> defaultRoles = List.of("CUSTOMER", "ADMIN", "OWNER");
-
-        for (String roleName : defaultRoles) {
-            roleRepository.findByRoleName(roleName)
-                    .or(() -> {
-                        Role role = new Role();
-                        role.setRoleName(roleName);
-                        // Gán tất cả quyền cho ADMIN
-                        if (roleName.equals("ADMIN")) {
-                            role.setPermissions(new java.util.HashSet<>(permissionRepository.findAll()));
-                        }
-                        roleRepository.save(role);
-                        System.out.println("✅ Created default role: " + roleName);
-                        return java.util.Optional.of(role);
-                    });
+        // 1. Super Admin
+        Role superAdmin = roleRepository.findByName("SUPER_ADMIN")
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName("SUPER_ADMIN");
+                    role.setDescription("Vai trò tối cao, toàn quyền hệ thống");
+                    role.setIsSuper(true);
+                    role.setCreatedAt(LocalDateTime.now());
+                    Role saved = roleRepository.save(role);
+                    System.out.println("✅ Created role: SUPER_ADMIN");
+                    return saved;
+                });
+        
+        // Super Admin luôn được cập nhật full quyền để đảm bảo không bị lock-out
+        Set<com.example.smart_booking_system.entity.Permission> allPerms = new java.util.HashSet<>(permissionRepository.findAll());
+        if (superAdmin.getPermissions().size() != allPerms.size()) {
+            superAdmin.setPermissions(allPerms);
+            roleRepository.save(superAdmin);
+            System.out.println("✅ Synchronized full permissions for SUPER_ADMIN");
         }
+
+        // 2. Admin thường
+        roleRepository.findByName("ADMIN")
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName("ADMIN");
+                    role.setDescription("Quản trị viên hệ thống");
+                    role.setIsSuper(false);
+                    role.setCreatedAt(LocalDateTime.now());
+                    
+                    // Chỉ gán quyền mặc định khi TẠO MỚI lần đầu
+                    Set<com.example.smart_booking_system.entity.Permission> adminPerms = permissionRepository.findAll().stream()
+                            .filter(p -> !p.getCode().equals("SYSTEM_LOG_VIEW"))
+                            .collect(java.util.stream.Collectors.toSet());
+                    role.setPermissions(adminPerms);
+                    
+                    Role saved = roleRepository.save(role);
+                    System.out.println("✅ Created role: ADMIN with default permissions");
+                    return saved;
+                });
+
+        // 3. Hotel Owner
+        roleRepository.findByName("OWNER")
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName("OWNER");
+                    role.setDescription("Chủ cơ sở lưu trú");
+                    role.setIsSuper(false);
+                    role.setCreatedAt(LocalDateTime.now());
+                    Role saved = roleRepository.save(role);
+                    System.out.println("✅ Created role: OWNER");
+                    return saved;
+                });
+
+        // 4. Customer
+        roleRepository.findByName("CUSTOMER")
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName("CUSTOMER");
+                    role.setDescription("Khách hàng");
+                    role.setIsSuper(false);
+                    role.setCreatedAt(LocalDateTime.now());
+                    Role saved = roleRepository.save(role);
+                    System.out.println("✅ Created role: CUSTOMER");
+                    return saved;
+                });
     }
 
     private void initDefaultUsers() {
-        // Dùng tên không có tiền tố
+        // Super Admin
+        createAccountIfNotExists(
+                "superadmin@travelmate.vn",
+                "SuperAdmin@123",
+                "Super Admin",
+                Set.of("SUPER_ADMIN")
+        );
+        // Admin thường
         createAccountIfNotExists(
                 "admin@travelmate.vn",
                     "Admin@123",
@@ -120,7 +211,7 @@ public class DataInitializer {
         user.setUpdatedAt(LocalDateTime.now());
 
         Set<Role> roles = roleRepository.findAll().stream()
-                .filter(role -> roleNames.contains(role.getRoleName()))
+                .filter(role -> roleNames.contains(role.getName()))
                 .collect(java.util.stream.Collectors.toSet());
         user.setRoles(roles);
 
