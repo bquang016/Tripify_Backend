@@ -3,6 +3,7 @@ package com.example.smart_booking_system.controller;
 import com.example.smart_booking_system.dto.response.ApiResponse;
 import com.example.smart_booking_system.dto.response.admin.AdminUserResponseDTO;
 import com.example.smart_booking_system.service.AdminManageUserService;
+import com.example.smart_booking_system.security.CheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@CheckPermission("USER_MANAGE")
 public class AdminManageUserController {
 
     private final AdminManageUserService adminManageUserService;

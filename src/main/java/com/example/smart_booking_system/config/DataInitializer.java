@@ -25,17 +25,41 @@ public class DataInitializer {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AmenityRepository amenityRepository; // THÊM MỚI: Inject Repository
+    private final com.example.smart_booking_system.repository.PermissionRepository permissionRepository;
 
     @PostConstruct
     public void init() {
-        // 1. Khởi tạo Roles
+        // 1. Khởi tạo Permissions
+        initPermissions();
+
+        // 2. Khởi tạo Roles
         initRoles();
 
-        // 2. Khởi tạo Users
+        // 3. Khởi tạo Users
         initDefaultUsers();
 
-        // 3. Khởi tạo Amenities (THÊM MỚI)
+        // 4. Khởi tạo Amenities (THÊM MỚI)
         initAmenities();
+    }
+
+    private void initPermissions() {
+        List<String> permissions = List.of(
+                "SYSTEM_LOG_VIEW",
+                "USER_MANAGE",
+                "PROPERTY_MANAGE",
+                "BOOKING_MANAGE",
+                "REPORTS_VIEW"
+        );
+
+        for (String pName : permissions) {
+            if (!permissionRepository.existsByName(pName)) {
+                com.example.smart_booking_system.entity.Permission p = new com.example.smart_booking_system.entity.Permission();
+                p.setName(pName);
+                p.setDescription("Quyền " + pName);
+                permissionRepository.save(p);
+                System.out.println("✅ Created default permission: " + pName);
+            }
+        }
     }
 
     private void initRoles() {
@@ -47,6 +71,10 @@ public class DataInitializer {
                     .or(() -> {
                         Role role = new Role();
                         role.setRoleName(roleName);
+                        // Gán tất cả quyền cho ADMIN
+                        if (roleName.equals("ADMIN")) {
+                            role.setPermissions(new java.util.HashSet<>(permissionRepository.findAll()));
+                        }
                         roleRepository.save(role);
                         System.out.println("✅ Created default role: " + roleName);
                         return java.util.Optional.of(role);
