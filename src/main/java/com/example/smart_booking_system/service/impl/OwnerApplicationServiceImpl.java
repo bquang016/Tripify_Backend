@@ -247,6 +247,14 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OwnerApplicationDTO getApplicationDetail(Long id) {
+        OwnerApplication application = ownerApplicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + id));
+        return convertToDTO(application);
+    }
     
     private OwnerApplicationDTO convertToDTO(OwnerApplication app) {
         try {
@@ -257,7 +265,14 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             dto.setApplicantEmail(app.getEmail());
             dto.setApplicantFullName(data.getFullName());
             dto.setApplicantPhoneNumber(data.getPhoneNumber());
-            dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+            dto.setApplicantAvatar(data.getAvatarUrl());
+            dto.setCardFrontImage(data.getCccdFrontUrl());
+            dto.setCardBackImage(data.getCccdBackUrl());
+            dto.setBusinessLicenseImage(data.getBusinessLicenseImage());
+            
+            if (data.getDateOfBirth() != null) {
+                dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+            }
             dto.setPersonalIdCard(data.getIdentityCardNumber());
             dto.setCreatedAt(app.getCreatedAt());
             dto.setReviewedAt(app.getReviewedAt());
@@ -265,10 +280,62 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             if (app.getReviewedBy() != null) {
                 dto.setReviewedByAdminName(app.getReviewedBy());
             }
-            // In a real app, you would also map property info etc.
+
+            // Mapping Property Info
+            OwnerApplicationRequest.PropertyInfo prop = data.getPropertyInfo();
+            if (prop != null) {
+                OwnerApplicationDTO.PropertyInfoDTO propDTO = new OwnerApplicationDTO.PropertyInfoDTO();
+                propDTO.setPropertyName(prop.getPropertyName());
+                propDTO.setPropertyType(prop.getPropertyType().toString());
+                propDTO.setDescription(prop.getDescription());
+                propDTO.setPropertyAddress(prop.getPropertyAddress());
+                propDTO.setPropertyCity(prop.getPropertyCity());
+                propDTO.setPropertyDistrict(prop.getPropertyDistrict());
+                propDTO.setPropertyWard(prop.getPropertyWard());
+                propDTO.setLatitude(prop.getLatitude());
+                propDTO.setLongitude(prop.getLongitude());
+                propDTO.setBusinessLicenseNumber(prop.getBusinessLicenseNumber());
+                propDTO.setPrice(prop.getPrice().doubleValue());
+                propDTO.setWeekendPrice(prop.getWeekendPrice().doubleValue());
+                propDTO.setCapacity(prop.getCapacity());
+                propDTO.setArea(prop.getArea());
+                propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
+                
+                // Get Amenity Names
+                if (prop.getAmenityIds() != null && !prop.getAmenityIds().isEmpty()) {
+                    List<Integer> amenityIds = prop.getAmenityIds().stream().map(Integer::parseInt).collect(Collectors.toList());
+                    List<String> amenityNames = amenityRepository.findAllById(amenityIds).stream()
+                            .map(Amenity::getAmenityName)
+                            .collect(Collectors.toList());
+                    propDTO.setAmenityNames(amenityNames);
+                }
+
+                // Policies
+                if (prop.getPolicies() != null) {
+                    OwnerApplicationDTO.PoliciesDTO polDTO = new OwnerApplicationDTO.PoliciesDTO();
+                    polDTO.setCheckInTime(prop.getPolicies().getCheckInTime());
+                    polDTO.setCheckOutTime(prop.getPolicies().getCheckOutTime());
+                    polDTO.setMinimumAge(prop.getPolicies().getMinimumAge());
+                    polDTO.setAllowFreeCancellation(prop.getPolicies().isAllowFreeCancellation());
+                    polDTO.setFreeCancellationDays(prop.getPolicies().getFreeCancellationDays());
+                    propDTO.setPolicies(polDTO);
+                }
+                dto.setPropertyInfo(propDTO);
+            }
+
+            // Mapping Payment Info
+            OwnerApplicationRequest.PaymentInfo pay = data.getPaymentInfo();
+            if (pay != null) {
+                OwnerApplicationDTO.PaymentInfoDTO payDTO = new OwnerApplicationDTO.PaymentInfoDTO();
+                payDTO.setPaymentMethod(pay.getPaymentMethod());
+                payDTO.setBankName(pay.getBankName());
+                payDTO.setAccountHolderName(pay.getAccountHolderName());
+                payDTO.setAccountNumber(pay.getAccountNumber());
+                dto.setPaymentInfo(payDTO);
+            }
+
             return dto;
         } catch(Exception e) {
-            // Create a simpler DTO if parsing fails
             OwnerApplicationDTO dto = new OwnerApplicationDTO();
             dto.setId(app.getId());
             dto.setStatus(app.getStatus());

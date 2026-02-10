@@ -9,6 +9,8 @@ import java.util.List;
 public interface OwnerApplicationService {
     List<OwnerApplicationDTO> getApplicationsByStatus(ApplicationStatus status);
 
+    OwnerApplicationDTO getApplicationDetail(Long id);
+
     void approveApplication(Long applicationId, String adminUsername);
 
     void rejectApplication(Long applicationId, String reason, String adminUsername);

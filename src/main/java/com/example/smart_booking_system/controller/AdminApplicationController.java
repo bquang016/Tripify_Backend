@@ -56,6 +56,12 @@ public class AdminApplicationController {
         }
     }
 
+    @GetMapping("/{applicationId}")
+    public ResponseEntity<ApiResponse<OwnerApplicationDTO>> getApplicationDetail(@PathVariable Long applicationId) {
+        OwnerApplicationDTO application = ownerApplicationService.getApplicationDetail(applicationId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết đơn đăng ký thành công", application));
+    }
+
     @PostMapping("/{applicationId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveApplication(
             @PathVariable Long applicationId,
