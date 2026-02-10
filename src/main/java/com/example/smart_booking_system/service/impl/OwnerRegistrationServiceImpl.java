@@ -71,10 +71,6 @@ public class OwnerRegistrationServiceImpl implements OwnerRegistrationService {
             throw new BadRequestException("Invalid temporary token payload.");
         }
 
-        if (ownerApplicationRepository.existsByEmailAndStatus(email, ApplicationStatus.PENDING)) {
-            throw new ConflictException("An application with this email is already pending approval.");
-        }
-
         String ownerIdForPaths = email.replaceAll("[^a-zA-Z0-9]", "_");
 
         String avatarUrl = (avatar != null && !avatar.isEmpty())

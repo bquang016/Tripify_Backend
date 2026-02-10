@@ -60,40 +60,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String userId = jwtUtil.getUserIdFromToken(token);
 
                     if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                        UserDetails userDetails = userDetailsService.loadUserById(userId);
-                        if (!userDetails.isAccountNonLocked()) {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType("application/json");
-                            response.setCharacterEncoding("UTF-8");
-                            response.getWriter().write("{\"error\": \"Tài khoản của bạn đã bị khóa hoặc tạm ngưng.\"}");
-                            return; // Dừng request ngay lập tức
-                        }
+                        try {
+                            UserDetails userDetails = userDetailsService.loadUserById(userId);
+                            if (!userDetails.isAccountNonLocked()) {
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                                response.setContentType("application/json");
+                                response.setCharacterEncoding("UTF-8");
+                                response.getWriter().write("{\"error\": \"Tài khoản của bạn đã bị khóa hoặc tạm ngưng.\"}");
+                                return;
+                            }
 
-                        if (!userDetails.isEnabled()) {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json");
-                            response.setCharacterEncoding("UTF-8");
-                            response.getWriter().write("{\"error\": \"Tài khoản chưa được kích hoạt.\"}");
-                            return;
-                        }
-                        UsernamePasswordAuthenticationToken auth =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails, null, userDetails.getAuthorities());
+                            if (!userDetails.isEnabled()) {
+                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                response.setContentType("application/json");
+                                response.setCharacterEncoding("UTF-8");
+                                response.getWriter().write("{\"error\": \"Tài khoản chưa được kích hoạt.\"}");
+                                return;
+                            }
+                            UsernamePasswordAuthenticationToken auth =
+                                    new UsernamePasswordAuthenticationToken(
+                                            userDetails, null, userDetails.getAuthorities());
 
-                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(auth);
+                            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                        } catch (Exception e) {
+                            // Log lỗi nhưng vẫn cho đi tiếp để SecurityConfig xử lý quyền truy cập
+                            logger.error("User not found or invalid ID in token: " + userId);
+                        }
                     }
                 }
             }
-
-
-            filterChain.doFilter(request, response);
-
         } catch (Exception ex) {
-            logger.error("Không thể xác thực JWT", ex);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\": \"Invalid token.\"}");
+            logger.error("Lỗi nghiêm trọng khi xử lý JWT", ex);
+            // Không trả về 401 ở đây để tránh chặn các request public
         }
 
+        filterChain.doFilter(request, response);
     }
 }
