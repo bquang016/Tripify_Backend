@@ -255,25 +255,16 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + id));
         return convertToDTO(application);
     }
-    
+
     private OwnerApplicationDTO convertToDTO(OwnerApplication app) {
         try {
             OwnerApplicationData data = objectMapper.readValue(app.getApplicationData(), OwnerApplicationData.class);
             OwnerApplicationDTO dto = new OwnerApplicationDTO();
+
+            // --- CÁC TRƯỜNG CƠ BẢN ---
             dto.setId(app.getId());
             dto.setStatus(app.getStatus());
             dto.setApplicantEmail(app.getEmail());
-            dto.setApplicantFullName(data.getFullName());
-            dto.setApplicantPhoneNumber(data.getPhoneNumber());
-            dto.setApplicantAvatar(data.getAvatarUrl());
-            dto.setCardFrontImage(data.getCccdFrontUrl());
-            dto.setCardBackImage(data.getCccdBackUrl());
-            dto.setBusinessLicenseImage(data.getBusinessLicenseImage());
-            
-            if (data.getDateOfBirth() != null) {
-                dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
-            }
-            dto.setPersonalIdCard(data.getIdentityCardNumber());
             dto.setCreatedAt(app.getCreatedAt());
             dto.setReviewedAt(app.getReviewedAt());
             dto.setAdminReason(app.getRejectionReason());
@@ -281,7 +272,40 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 dto.setReviewedByAdminName(app.getReviewedBy());
             }
 
-            // Mapping Property Info
+            // --- MAPPING THÔNG TIN CÁ NHÂN (QUAN TRỌNG) ---
+            dto.setApplicantFullName(data.getFullName());
+            dto.setApplicantPhoneNumber(data.getPhoneNumber());
+            dto.setApplicantAvatar(data.getAvatarUrl());
+            dto.setPersonalIdCard(data.getIdentityCardNumber());
+
+            // [FIX] Map giới tính
+            dto.setGender(data.getGender());
+
+            // [FIX] Map địa chỉ: Lấy từ trường address (đã gộp string ở frontend) gán vào permanentAddress
+            dto.setPermanentAddress(data.getAddress());
+
+            // [FIX] Map quê quán: Tạm thời lấy City hoặc để null nếu không dùng
+            dto.setHometownAddress(data.getCity());
+
+            // --- MAPPING ẢNH CÁ NHÂN ---
+            dto.setCardFrontImage(data.getCccdFrontUrl());
+            dto.setCardBackImage(data.getCccdBackUrl());
+            dto.setBusinessLicenseImage(data.getBusinessLicenseImage());
+
+            // [FIX] Map số GPKD ra root để hiển thị
+            if (data.getPropertyInfo() != null) {
+                dto.setBusinessLicenseNumber(data.getPropertyInfo().getBusinessLicenseNumber());
+            }
+
+            if (data.getDateOfBirth() != null) {
+                try {
+                    dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+                } catch (Exception e) {
+                    // Ignore date parse error
+                }
+            }
+
+            // --- MAPPING PROPERTY INFO ---
             OwnerApplicationRequest.PropertyInfo prop = data.getPropertyInfo();
             if (prop != null) {
                 OwnerApplicationDTO.PropertyInfoDTO propDTO = new OwnerApplicationDTO.PropertyInfoDTO();
@@ -295,19 +319,30 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 propDTO.setLatitude(prop.getLatitude());
                 propDTO.setLongitude(prop.getLongitude());
                 propDTO.setBusinessLicenseNumber(prop.getBusinessLicenseNumber());
-                propDTO.setPrice(prop.getPrice().doubleValue());
-                propDTO.setWeekendPrice(prop.getWeekendPrice().doubleValue());
+
+                // Xử lý an toàn cho số liệu
+                propDTO.setPrice(prop.getPrice() != null ? prop.getPrice().doubleValue() : 0.0);
+                propDTO.setWeekendPrice(prop.getWeekendPrice() != null ? prop.getWeekendPrice().doubleValue() : 0.0);
                 propDTO.setCapacity(prop.getCapacity());
-                propDTO.setArea(prop.getArea());
+                propDTO.setArea(prop.getArea() != null ? prop.getArea() : 0.0);
+
                 propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
-                
-                // Get Amenity Names
+
+                // Amenities
                 if (prop.getAmenityIds() != null && !prop.getAmenityIds().isEmpty()) {
-                    List<Integer> amenityIds = prop.getAmenityIds().stream().map(Integer::parseInt).collect(Collectors.toList());
-                    List<String> amenityNames = amenityRepository.findAllById(amenityIds).stream()
-                            .map(Amenity::getAmenityName)
+                    List<Integer> amenityIds = prop.getAmenityIds().stream()
+                            .map(id -> {
+                                try { return Integer.parseInt(id.toString()); } catch (NumberFormatException e) { return null; }
+                            })
+                            .filter(java.util.Objects::nonNull)
                             .collect(Collectors.toList());
-                    propDTO.setAmenityNames(amenityNames);
+
+                    if (!amenityIds.isEmpty()) {
+                        List<String> amenityNames = amenityRepository.findAllById(amenityIds).stream()
+                                .map(Amenity::getAmenityName)
+                                .collect(Collectors.toList());
+                        propDTO.setAmenityNames(amenityNames);
+                    }
                 }
 
                 // Policies
@@ -323,7 +358,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 dto.setPropertyInfo(propDTO);
             }
 
-            // Mapping Payment Info
+            // --- MAPPING PAYMENT INFO ---
             OwnerApplicationRequest.PaymentInfo pay = data.getPaymentInfo();
             if (pay != null) {
                 OwnerApplicationDTO.PaymentInfoDTO payDTO = new OwnerApplicationDTO.PaymentInfoDTO();
@@ -336,10 +371,12 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
 
             return dto;
         } catch(Exception e) {
+            e.printStackTrace(); // Log lỗi để debug
             OwnerApplicationDTO dto = new OwnerApplicationDTO();
             dto.setId(app.getId());
             dto.setStatus(app.getStatus());
             dto.setApplicantEmail(app.getEmail());
+            dto.setAdminReason("Error parsing data: " + e.getMessage());
             return dto;
         }
     }

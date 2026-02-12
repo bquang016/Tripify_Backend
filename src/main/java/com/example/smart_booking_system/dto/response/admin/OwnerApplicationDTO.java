@@ -32,6 +32,7 @@ public class OwnerApplicationDTO {
     private String applicantAvatar;
     private LocalDate applicantDob;
     private String personalIdCard;
+    private String gender;
 
     private String reviewedByAdminName;
 
