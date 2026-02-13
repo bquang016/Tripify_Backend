@@ -257,6 +257,17 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
     }
 
     private OwnerApplicationDTO convertToDTO(OwnerApplication app) {
+        // --- FIX START: Kiểm tra null trước khi parse ---
+        if (app.getApplicationData() == null) {
+            OwnerApplicationDTO dto = new OwnerApplicationDTO();
+            dto.setId(app.getId());
+            dto.setStatus(app.getStatus());
+            dto.setApplicantEmail(app.getEmail());
+            dto.setAdminReason("Dữ liệu đơn đăng ký bị lỗi (NULL)"); // Đánh dấu để Admin biết
+            return dto;
+        }
+        // --- FIX END ---
+
         try {
             OwnerApplicationData data = objectMapper.readValue(app.getApplicationData(), OwnerApplicationData.class);
             OwnerApplicationDTO dto = new OwnerApplicationDTO();
@@ -273,100 +284,93 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             }
 
             // --- MAPPING THÔNG TIN CÁ NHÂN (QUAN TRỌNG) ---
-            dto.setApplicantFullName(data.getFullName());
-            dto.setApplicantPhoneNumber(data.getPhoneNumber());
-            dto.setApplicantAvatar(data.getAvatarUrl());
-            dto.setPersonalIdCard(data.getIdentityCardNumber());
+            if (data != null) { // Kiểm tra data null thêm 1 lần nữa cho chắc chắn
+                dto.setApplicantFullName(data.getFullName());
+                dto.setApplicantPhoneNumber(data.getPhoneNumber());
+                dto.setApplicantAvatar(data.getAvatarUrl());
+                dto.setPersonalIdCard(data.getIdentityCardNumber());
+                dto.setGender(data.getGender());
+                dto.setPermanentAddress(data.getAddress());
+                dto.setHometownAddress(data.getCity());
 
-            // [FIX] Map giới tính
-            dto.setGender(data.getGender());
+                dto.setCardFrontImage(data.getCccdFrontUrl());
+                dto.setCardBackImage(data.getCccdBackUrl());
+                dto.setBusinessLicenseImage(data.getBusinessLicenseImage());
 
-            // [FIX] Map địa chỉ: Lấy từ trường address (đã gộp string ở frontend) gán vào permanentAddress
-            dto.setPermanentAddress(data.getAddress());
-
-            // [FIX] Map quê quán: Tạm thời lấy City hoặc để null nếu không dùng
-            dto.setHometownAddress(data.getCity());
-
-            // --- MAPPING ẢNH CÁ NHÂN ---
-            dto.setCardFrontImage(data.getCccdFrontUrl());
-            dto.setCardBackImage(data.getCccdBackUrl());
-            dto.setBusinessLicenseImage(data.getBusinessLicenseImage());
-
-            // [FIX] Map số GPKD ra root để hiển thị
-            if (data.getPropertyInfo() != null) {
-                dto.setBusinessLicenseNumber(data.getPropertyInfo().getBusinessLicenseNumber());
-            }
-
-            if (data.getDateOfBirth() != null) {
-                try {
-                    dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
-                } catch (Exception e) {
-                    // Ignore date parse error
+                if (data.getPropertyInfo() != null) {
+                    dto.setBusinessLicenseNumber(data.getPropertyInfo().getBusinessLicenseNumber());
                 }
-            }
 
-            // --- MAPPING PROPERTY INFO ---
-            OwnerApplicationRequest.PropertyInfo prop = data.getPropertyInfo();
-            if (prop != null) {
-                OwnerApplicationDTO.PropertyInfoDTO propDTO = new OwnerApplicationDTO.PropertyInfoDTO();
-                propDTO.setPropertyName(prop.getPropertyName());
-                propDTO.setPropertyType(prop.getPropertyType().toString());
-                propDTO.setDescription(prop.getDescription());
-                propDTO.setPropertyAddress(prop.getPropertyAddress());
-                propDTO.setPropertyCity(prop.getPropertyCity());
-                propDTO.setPropertyDistrict(prop.getPropertyDistrict());
-                propDTO.setPropertyWard(prop.getPropertyWard());
-                propDTO.setLatitude(prop.getLatitude());
-                propDTO.setLongitude(prop.getLongitude());
-                propDTO.setBusinessLicenseNumber(prop.getBusinessLicenseNumber());
-
-                // Xử lý an toàn cho số liệu
-                propDTO.setPrice(prop.getPrice() != null ? prop.getPrice().doubleValue() : 0.0);
-                propDTO.setWeekendPrice(prop.getWeekendPrice() != null ? prop.getWeekendPrice().doubleValue() : 0.0);
-                propDTO.setCapacity(prop.getCapacity());
-                propDTO.setArea(prop.getArea() != null ? prop.getArea() : 0.0);
-
-                propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
-
-                // Amenities
-                if (prop.getAmenityIds() != null && !prop.getAmenityIds().isEmpty()) {
-                    List<Integer> amenityIds = prop.getAmenityIds().stream()
-                            .map(id -> {
-                                try { return Integer.parseInt(id.toString()); } catch (NumberFormatException e) { return null; }
-                            })
-                            .filter(java.util.Objects::nonNull)
-                            .collect(Collectors.toList());
-
-                    if (!amenityIds.isEmpty()) {
-                        List<String> amenityNames = amenityRepository.findAllById(amenityIds).stream()
-                                .map(Amenity::getAmenityName)
-                                .collect(Collectors.toList());
-                        propDTO.setAmenityNames(amenityNames);
+                if (data.getDateOfBirth() != null) {
+                    try {
+                        dto.setApplicantDob(LocalDate.parse(data.getDateOfBirth(), DATE_FORMATTER));
+                    } catch (Exception e) {
+                        // Ignore date parse error
                     }
                 }
 
-                // Policies
-                if (prop.getPolicies() != null) {
-                    OwnerApplicationDTO.PoliciesDTO polDTO = new OwnerApplicationDTO.PoliciesDTO();
-                    polDTO.setCheckInTime(prop.getPolicies().getCheckInTime());
-                    polDTO.setCheckOutTime(prop.getPolicies().getCheckOutTime());
-                    polDTO.setMinimumAge(prop.getPolicies().getMinimumAge());
-                    polDTO.setAllowFreeCancellation(prop.getPolicies().isAllowFreeCancellation());
-                    polDTO.setFreeCancellationDays(prop.getPolicies().getFreeCancellationDays());
-                    propDTO.setPolicies(polDTO);
-                }
-                dto.setPropertyInfo(propDTO);
-            }
+                // --- MAPPING PROPERTY INFO ---
+                OwnerApplicationRequest.PropertyInfo prop = data.getPropertyInfo();
+                if (prop != null) {
+                    OwnerApplicationDTO.PropertyInfoDTO propDTO = new OwnerApplicationDTO.PropertyInfoDTO();
+                    propDTO.setPropertyName(prop.getPropertyName());
+                    propDTO.setPropertyType(prop.getPropertyType() != null ? prop.getPropertyType().toString() : "");
+                    propDTO.setDescription(prop.getDescription());
+                    propDTO.setPropertyAddress(prop.getPropertyAddress());
+                    propDTO.setPropertyCity(prop.getPropertyCity());
+                    propDTO.setPropertyDistrict(prop.getPropertyDistrict());
+                    propDTO.setPropertyWard(prop.getPropertyWard());
+                    propDTO.setLatitude(prop.getLatitude());
+                    propDTO.setLongitude(prop.getLongitude());
+                    propDTO.setBusinessLicenseNumber(prop.getBusinessLicenseNumber());
 
-            // --- MAPPING PAYMENT INFO ---
-            OwnerApplicationRequest.PaymentInfo pay = data.getPaymentInfo();
-            if (pay != null) {
-                OwnerApplicationDTO.PaymentInfoDTO payDTO = new OwnerApplicationDTO.PaymentInfoDTO();
-                payDTO.setPaymentMethod(pay.getPaymentMethod());
-                payDTO.setBankName(pay.getBankName());
-                payDTO.setAccountHolderName(pay.getAccountHolderName());
-                payDTO.setAccountNumber(pay.getAccountNumber());
-                dto.setPaymentInfo(payDTO);
+                    propDTO.setPrice(prop.getPrice() != null ? prop.getPrice().doubleValue() : 0.0);
+                    propDTO.setWeekendPrice(prop.getWeekendPrice() != null ? prop.getWeekendPrice().doubleValue() : 0.0);
+                    propDTO.setCapacity(prop.getCapacity());
+                    propDTO.setArea(prop.getArea() != null ? prop.getArea() : 0.0);
+
+                    propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
+
+                    // Amenities
+                    if (prop.getAmenityIds() != null && !prop.getAmenityIds().isEmpty()) {
+                        List<Integer> amenityIds = prop.getAmenityIds().stream()
+                                .map(id -> {
+                                    try { return Integer.parseInt(id.toString()); } catch (NumberFormatException e) { return null; }
+                                })
+                                .filter(java.util.Objects::nonNull)
+                                .collect(Collectors.toList());
+
+                        if (!amenityIds.isEmpty()) {
+                            List<String> amenityNames = amenityRepository.findAllById(amenityIds).stream()
+                                    .map(Amenity::getAmenityName)
+                                    .collect(Collectors.toList());
+                            propDTO.setAmenityNames(amenityNames);
+                        }
+                    }
+
+                    // Policies
+                    if (prop.getPolicies() != null) {
+                        OwnerApplicationDTO.PoliciesDTO polDTO = new OwnerApplicationDTO.PoliciesDTO();
+                        polDTO.setCheckInTime(prop.getPolicies().getCheckInTime());
+                        polDTO.setCheckOutTime(prop.getPolicies().getCheckOutTime());
+                        polDTO.setMinimumAge(prop.getPolicies().getMinimumAge());
+                        polDTO.setAllowFreeCancellation(prop.getPolicies().isAllowFreeCancellation());
+                        polDTO.setFreeCancellationDays(prop.getPolicies().getFreeCancellationDays());
+                        propDTO.setPolicies(polDTO);
+                    }
+                    dto.setPropertyInfo(propDTO);
+                }
+
+                // --- MAPPING PAYMENT INFO ---
+                OwnerApplicationRequest.PaymentInfo pay = data.getPaymentInfo();
+                if (pay != null) {
+                    OwnerApplicationDTO.PaymentInfoDTO payDTO = new OwnerApplicationDTO.PaymentInfoDTO();
+                    payDTO.setPaymentMethod(pay.getPaymentMethod());
+                    payDTO.setBankName(pay.getBankName());
+                    payDTO.setAccountHolderName(pay.getAccountHolderName());
+                    payDTO.setAccountNumber(pay.getAccountNumber());
+                    dto.setPaymentInfo(payDTO);
+                }
             }
 
             return dto;
