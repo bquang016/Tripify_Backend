@@ -68,12 +68,18 @@ public class Property {
     @Column(precision = 2, scale = 1)
     private BigDecimal rating = BigDecimal.ZERO;
 
+    @Column(name = "star_rating")
+    private int starRating = 0;
+
     private int reviewCount = 0;
 
     private boolean isActive = false;
 
     @Enumerated(EnumType.STRING)
     private PropertyStatus propertyStatus;
+
+    private String businessLicenseNumber;
+    private String businessLicenseImage;
 
     private LocalDate createdAt = LocalDate.now();
     private LocalDate updatedAt = LocalDate.now();
@@ -82,7 +88,6 @@ public class Property {
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PropertyAmenity> propertyAmenities;
-
 
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, cascade = CascadeType.ALL)

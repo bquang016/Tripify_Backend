@@ -1,34 +1,115 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8" />
-    <title>Đơn đã được duyệt - TravelMate</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hồ sơ đối tác đã được duyệt - Tripify</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9fb; margin: 0; padding: 0; color: #333; }
-        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e3eef3; }
-        /* HEADER CHUẨN MỚI */
-        .header { background-color: #ffffff; border-bottom: 3px solid #00a8e8; text-align: center; padding: 45px 45px; line-height: 0; font-size: 0; }
-        .header img { width: 300px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0; }
+        /* RESET STYLES */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; -webkit-text-size-adjust: none; color: #333333; }
+        table { border-collapse: collapse; width: 100%; }
+
+        /* CONTAINER */
+        .wrapper { width: 100%; background-color: #f4f7f6; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+        /* HEADER */
+        .header { background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%); padding: 30px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+        .header img { height: 60px; width: auto; display: block; margin: 0 auto; }
+
         /* CONTENT */
-        .content { padding: 35px 30px; line-height: 1.7; font-size: 15px; }
-        .content h2 { color: #28a745; /* Xanh lá */ margin-bottom: 10px; margin-top: 0; font-size: 24px; }
-        .content p { margin-bottom: 20px; font-size: 15px; color: #444; }
-        .reason-box { font-size: 14px; color: #333; background: #f1faf1; padding: 20px; border-radius: 8px; border: 1px solid #c8e6c9; line-height: 1.8; }
-        .footer { background-color: #f7f9fa; text-align: center; padding: 20px; font-size: 12px; color: #888; border-top: 1px solid #e0e8ec; line-height: 1.5; }
-        @media (max-width: 600px) { .content { padding: 25px 20px; } }
+        .content { padding: 40px 35px; }
+        .badge-success { display: inline-block; background-color: #e6fffa; color: #047857; font-size: 12px; font-weight: 700; text-transform: uppercase; padding: 6px 12px; border-radius: 50px; letter-spacing: 1px; margin-bottom: 20px; border: 1px solid #b2f5ea; }
+        .title { font-size: 24px; font-weight: 700; color: #1a202c; margin: 0 0 15px; line-height: 1.3; }
+        .text { font-size: 15px; line-height: 1.7; color: #4a5568; margin-bottom: 25px; }
+
+        /* CREDENTIALS BOX (QUAN TRỌNG) */
+        .credentials-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin: 30px 0; text-align: left; }
+        .cred-title { font-size: 14px; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; border-bottom: 1px solid #edf2f7; padding-bottom: 10px; }
+        .cred-row { display: flex; align-items: center; margin-bottom: 12px; }
+        .cred-label { width: 100px; font-size: 14px; color: #718096; }
+        .cred-value { font-size: 16px; font-weight: 600; color: #2d3748; font-family: monospace; letter-spacing: 0.5px; background: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid #edf2f7; }
+        .password-highlight { color: #d53f8c; border-color: #fed7e2; background-color: #fff5f7; }
+
+        /* BUTTON */
+        .btn-wrapper { text-align: center; margin-top: 35px; margin-bottom: 10px; }
+        .btn { display: inline-block; background-color: #0099e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 14px 30px; border-radius: 8px; font-size: 16px; transition: background-color 0.3s; box-shadow: 0 4px 6px rgba(0, 153, 229, 0.2); }
+        .btn:hover { background-color: #0088cc; }
+
+        /* NOTE */
+        .note { font-size: 13px; color: #718096; background-color: #fffaf0; border-left: 3px solid #ed8936; padding: 15px; border-radius: 0 4px 4px 0; margin-top: 30px; line-height: 1.6; }
+
+        /* FOOTER */
+        .footer { background-color: #f8fafc; padding: 30px; text-align: center; font-size: 13px; color: #a0aec0; border-top: 1px solid #edf2f7; }
+        .footer a { color: #0099e5; text-decoration: none; margin: 0 5px; }
+
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; border-radius: 0; }
+            .content { padding: 30px 20px; }
+            .cred-row { display: block; margin-bottom: 15px; }
+            .cred-label { margin-bottom: 5px; display: block; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <img src="cid:logoImage" alt="TravelMate Logo" border="0">
+<div class="wrapper">
+    <div class="container">
+        <div class="header">
+            <img src="cid:logoImage" alt="Tripify Logo">
+        </div>
+
+        <div class="content">
+            <div style="text-align: center;">
+                <span class="badge-success">✓ Hồ sơ đã được duyệt</span>
+                <h1 class="title">Chào mừng trở thành đối tác chính thức của Tripify!</h1>
+            </div>
+
+            <p class="text">
+                Xin chào <strong><span th:text="${applicantName}">Đối tác</span></strong>,<br><br>
+                Chúng tôi vui mừng thông báo đơn đăng ký kinh doanh dịch vụ lưu trú của bạn đã được phê duyệt thành công.
+                Hệ thống đã thiết lập tài khoản quản trị (Admin Portal) để bạn có thể bắt đầu đăng tải phòng, quản lý đặt chỗ và doanh thu ngay lập tức.
+            </p>
+
+            <div class="credentials-box">
+                <div class="cred-title">Thông tin đăng nhập của bạn</div>
+
+                <div class="cred-row">
+                    <span class="cred-label">Cổng quản lý:</span>
+                    <a href="http://localhost:5173/auth/login" style="color: #0099e5; text-decoration: none; font-size: 14px;">portal.tripify.com</a>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Email:</span>
+                    <span class="cred-value" th:text="${email}">partner@example.com</span>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Mật khẩu:</span>
+                    <span class="cred-value password-highlight" th:text="${password}">------</span>
+                </div>
+            </div>
+
+            <p class="text">
+                Để đảm bảo an toàn, vui lòng <strong>đổi mật khẩu ngay</strong> sau lần đăng nhập đầu tiên tại mục <em>Cài đặt tài khoản</em>.
+            </p>
+
+            <div class="btn-wrapper">
+                <a href="http://localhost:5173/auth/login" class="btn">Truy cập Dashboard ngay</a>
+            </div>
+
+            <div class="note">
+                <strong>Lưu ý:</strong> Nếu bạn gặp khó khăn trong quá trình đăng nhập, vui lòng liên hệ bộ phận hỗ trợ đối tác qua email <strong>partners@tripify.com</strong> hoặc hotline <strong>1900 1234</strong>.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span> Tripify Inc. All rights reserved.</p>
+            <p>123 Travel Street, Ho Chi Minh City, Vietnam</p>
+            <p>
+                <a href="#">Trung tâm hỗ trợ</a> •
+                <a href="#">Chính sách bảo mật</a> •
+                <a href="#">Điều khoản dịch vụ</a>
+            </p>
+        </div>
     </div>
-    <div class="content">
-        <h2>✅ Chúc mừng <strong th:text="${applicantName}">Bạn</strong>! Đơn đã được DUYỆT.</h2>
-        <p>Đơn đăng ký trở thành chủ khách sạn của bạn tại <strong>TravelMate</strong> đã được <strong>DUYỆT</strong>.</p>
-        <p>Từ bây giờ, bạn đã có thể đăng nhập vào hệ thống với vai trò chủ khách sạn để bắt đầu đăng tải và quản lý cơ sở của mình.</p>
-    </div>
-    <div class="footer"><p>&copy; 2025 TravelMate. Mọi quyền được bảo lưu.</p></div>
 </div>
 </body>
 </html>

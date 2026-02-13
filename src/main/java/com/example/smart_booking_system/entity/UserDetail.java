@@ -58,6 +58,16 @@ public class UserDetail {
 
     @Column(name = "notification_email")
     private String notificationEmail;
+
+    @Column(length = 20)
+    private String identityCardNumber; // Số CCCD/CMND
+
+    @Column(length = 512)
+    private String cccdFrontUrl; // Ảnh mặt trước CCCD
+
+    @Column(length = 512)
+    private String cccdBackUrl; // Ảnh mặt sau CCCD
+
     // ------------------------------------------
 
     @Column(nullable = false)

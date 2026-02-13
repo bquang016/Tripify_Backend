@@ -8,6 +8,8 @@ import com.example.smart_booking_system.dto.request.admin.PropertyReviewDTO;
 import com.example.smart_booking_system.dto.request.property.PropertyApplicationSubmitDTO;
 import com.example.smart_booking_system.dto.response.property.PropertyDetailDTO;
 import com.example.smart_booking_system.dto.response.property.PropertyMapDTO;
+import com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest;
+import com.example.smart_booking_system.repository.AmenityRepository;
 import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.*; // AmenityType, PropertyStatus, PropertyType, RoomCategory
 import com.example.smart_booking_system.exception.ForbiddenException;
@@ -65,6 +67,54 @@ public class PropertyServiceImpl implements PropertyService {
     // ============================================================
     // ADD PROPERTY
     // ============================================================
+
+    @Override
+    @Transactional
+    public PropertyDetailDTO registerProperty(PropertyRegistrationRequest request, String ownerId) {
+
+        // 1. Tìm Owner
+        User owner = userRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản chủ sở hữu"));
+
+        // 2. Map DTO sang Entity
+        Property property = new Property();
+        property.setPropertyName(request.getPropertyName());
+        property.setDescription(request.getDescription());
+        property.setPropertyType(request.getPropertyType());
+        property.setStarRating(request.getStarRating()); // Lưu hạng sao
+        property.setAddress(request.getAddress());
+        property.setCity(request.getCity());
+        property.setDistrict(request.getDistrict());
+        property.setWard(request.getWard());
+
+        if (request.getLatitude() != null) property.setLatitude(BigDecimal.valueOf(request.getLatitude()));
+        if (request.getLongitude() != null) property.setLongitude(BigDecimal.valueOf(request.getLongitude()));
+
+        property.setOwner(owner);
+        property.setActive(false); // Chờ Admin duyệt hoặc hoàn tất các bước sau
+        property.setPropertyStatus(PropertyStatus.PENDING);
+
+        // 3. Lưu Property trước để lấy ID
+        Property savedProperty = propertyRepository.save(property);
+
+        // 4. Xử lý Tiện ích (Amenities)
+        if (request.getAmenityIds() != null && !request.getAmenityIds().isEmpty()) {
+            List<Amenity> selectedAmenities = amenityRepository.findAllById(request.getAmenityIds());
+
+            List<PropertyAmenity> propertyAmenities = selectedAmenities.stream().map(amenity -> {
+                PropertyAmenity pa = new PropertyAmenity();
+                pa.setProperty(savedProperty);
+                pa.setAmenity(amenity);
+                return pa;
+            }).toList();
+
+            propertyAmenityRepository.saveAll(propertyAmenities);
+            savedProperty.setPropertyAmenities(propertyAmenities);
+        }
+
+        // 5. Convert sang DTO để trả về (bạn có thể dùng Mapper hoặc build thủ công)
+        return mapToPropertyDetailDTO(savedProperty);
+    }
     @Override
     public Property addProperty(Property property, String ownerId) {
 
@@ -846,8 +896,6 @@ public class PropertyServiceImpl implements PropertyService {
         return propertyRepository.findByPropertyStatus(status, pageable)
                 .map(this::mapToPropertyResponseDTO);
     }
-
-
 
     @Override
     @Transactional(readOnly = true)
