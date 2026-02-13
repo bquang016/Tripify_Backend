@@ -29,32 +29,31 @@ public class FileStorageService {
 
     private final S3Client r2Client;
     private final S3Presigner presigner;
-
-    @Value("${r2.bucket}")
-    private String bucket;
-
-    @Value("${r2.public-domain}")
-    private String publicDomain;
+    private final String bucket;
+    private final String publicDomain;
+    private final String endpoint; // Lưu lại endpoint để dùng nếu cần check
 
     // Allowed extensions
     private static final List<String> ALLOWED_IMAGE_EXTENSIONS = Arrays.asList(
             "png", "jpg", "jpeg", "gif", "bmp", "webp", "heic", "heif"
     );
 
-    // Constructor: ĐÃ SỬA TÊN BIẾN CHO KHỚP VỚI APPLICATION.PROPERTIES
     public FileStorageService(
-            @Value("${r2.access-key-id}") String accessKey,      // Sửa: accessKeyId -> access-key-id
-            @Value("${r2.secret-access-key}") String secretKey,  // Sửa: secretKey -> secret-access-key
+            @Value("${r2.access-key-id}") String accessKey,
+            @Value("${r2.secret-access-key}") String secretKey,
             @Value("${r2.endpoint}") String endpoint,
-            @Value("${r2.bucket}") String bucketName
+            @Value("${r2.bucket}") String bucketName,
+            @Value("${r2.public-domain}") String publicDomain
     ) {
         this.bucket = bucketName;
+        this.publicDomain = publicDomain.endsWith("/") ? publicDomain.substring(0, publicDomain.length() - 1) : publicDomain;
+        this.endpoint = endpoint;
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
         this.r2Client = S3Client.builder()
                 .endpointOverride(URI.create(endpoint))
-                .region(Region.US_EAST_1) // R2 dùng region này hoặc 'auto'
+                .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
 
@@ -66,7 +65,7 @@ public class FileStorageService {
     }
 
     private boolean isImageFile(MultipartFile file) {
-        // Dùng StringUtils của Spring thay vì Apache Commons để tránh lỗi thiếu thư viện
+        if (file.getOriginalFilename() == null) return false;
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         return ext != null && ALLOWED_IMAGE_EXTENSIONS.contains(ext.toLowerCase());
     }
@@ -82,6 +81,7 @@ public class FileStorageService {
             String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
             String fileName = UUID.randomUUID().toString() + (extension != null ? "." + extension : "");
 
+            // Tạo key: ví dụ "properties/abc@gmail.com/xyz.jpg"
             String key = (subDirectory == null || subDirectory.isEmpty())
                     ? fileName
                     : subDirectory + "/" + fileName;
@@ -91,13 +91,11 @@ public class FileStorageService {
                             .bucket(bucket)
                             .key(key)
                             .contentType(file.getContentType())
-                            // .acl("public-read") // Bỏ comment nếu bucket chưa set public policy
                             .build(),
                     RequestBody.fromBytes(file.getBytes())
             );
 
-            // Trả về Full URL để lưu vào DB hiển thị frontend luôn
-            // Nếu bạn muốn lưu key (đường dẫn ngắn), hãy return key;
+            // Trả về Full Public URL để lưu DB
             return publicDomain + "/" + key;
 
         } catch (IOException e) {
@@ -115,8 +113,8 @@ public class FileStorageService {
     public void deleteFile(String fileUrlOrKey) {
         if (fileUrlOrKey == null || fileUrlOrKey.trim().isEmpty()) return;
 
-        // Tách key từ URL nếu cần (vì storeImageFile đang trả về URL)
-        String key = fileUrlOrKey.replace(publicDomain + "/", "");
+        // [FIX QUAN TRỌNG] Luôn trích xuất key trước khi xóa
+        String key = extractKey(fileUrlOrKey);
 
         try {
             r2Client.deleteObject(
@@ -125,28 +123,87 @@ public class FileStorageService {
                             .key(key)
                             .build()
             );
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // Log warning if needed
+        }
     }
 
     // ===========================================
-    // 🔐 SIGNED URL (Dùng cho file riêng tư)
+    // 🔐 SIGNED URL / PUBLIC URL
     // ===========================================
-    public String generateSignedUrl(String key) {
+
+    /**
+     * Hàm này sửa lỗi Double URL:
+     * Nếu đầu vào là URL -> Cắt lấy key -> Tạo Signed URL chuẩn.
+     * Nếu đầu vào là Key -> Tạo Signed URL chuẩn.
+     */
+    public String generateSignedUrl(String urlOrKey) {
+        if (urlOrKey == null || urlOrKey.isEmpty()) return null;
+
         try {
+            // [FIX QUAN TRỌNG] Trích xuất key đúng, kể cả khi nằm trong folder con
+            String key = extractKey(urlOrKey);
+
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucket)
                     .key(key)
                     .build();
 
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofMinutes(30))
+                    .signatureDuration(Duration.ofMinutes(60)) // Tăng lên 60p cho thoải mái
                     .getObjectRequest(getObjectRequest)
                     .build();
 
             return presigner.presignGetObject(presignRequest).url().toString();
 
         } catch (Exception e) {
-            throw new RuntimeException("Could not generate signed URL");
+            e.printStackTrace();
+            throw new RuntimeException("Could not generate signed URL for: " + urlOrKey);
+        }
+    }
+
+    /**
+     * Hàm tiện ích để lấy URL sạch (Không ký)
+     * Dùng cho trường hợp file public
+     */
+    public String getPublicUrl(String urlOrKey) {
+        if (urlOrKey == null || urlOrKey.isEmpty()) return null;
+        if (urlOrKey.startsWith("http")) return urlOrKey; // Đã là URL thì trả về luôn
+        return publicDomain + "/" + urlOrKey;
+    }
+
+    // ===========================================
+    // 🛠 UTILS (CORE FIX)
+    // ===========================================
+
+    /**
+     * Tách Key từ Full URL.
+     * Ví dụ Input: "https://pub-domain.r2.dev/properties/user@test.com/img.jpg"
+     * Output: "properties/user@test.com/img.jpg"
+     * -> Giúp S3Client tìm đúng file trong folder con.
+     */
+    private String extractKey(String urlOrKey) {
+        if (urlOrKey == null) return null;
+
+        // Nếu không phải link http, coi như nó là key
+        if (!urlOrKey.startsWith("http")) {
+            return urlOrKey;
+        }
+
+        // Nếu là link public domain, cắt bỏ phần domain
+        if (urlOrKey.startsWith(publicDomain)) {
+            // +1 để bỏ dấu "/"
+            return urlOrKey.substring(publicDomain.length() + 1);
+        }
+
+        // Trường hợp URL lạ (ví dụ link cũ từ domain khác), cố gắng lấy phần path sau domain
+        try {
+            URI uri = URI.create(urlOrKey);
+            String path = uri.getPath();
+            // path sẽ là "/properties/..." -> bỏ dấu "/" đầu
+            return path.startsWith("/") ? path.substring(1) : path;
+        } catch (Exception e) {
+            return urlOrKey; // Fallback
         }
     }
 }
