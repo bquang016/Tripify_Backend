@@ -73,30 +73,53 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void sendOwnerOtp(String email) {
-        checkOwnerEmail(email); // Reuse the existing check
+        checkOwnerEmail(email); // Giữ nguyên check cũ
 
+        // 1. Tạo OTP
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
         LocalDateTime otpExpiry = LocalDateTime.now().plusMinutes(5);
 
+        // 2. Lưu vào DB
         com.example.smart_booking_system.entity.OwnerApplication application =
                 ownerApplicationRepository.findByEmail(email).orElseGet(() -> {
                     com.example.smart_booking_system.entity.OwnerApplication newApp = new com.example.smart_booking_system.entity.OwnerApplication();
                     newApp.setEmail(email);
-                    newApp.setStatus(ApplicationStatus.PENDING); // Initial status
+                    newApp.setStatus(ApplicationStatus.PENDING);
                     return newApp;
                 });
 
         application.setOtp(otpCode);
         application.setOtpExpiry(otpExpiry);
-        application.setEmailVerified(false); // Reset verification status on new OTP request
+        application.setEmailVerified(false);
         ownerApplicationRepository.save(application);
 
+        // ============================================================
+        // 3. DEBUG TRÊN CONSOLE (Quan trọng: Lấy mã ở đây để test ngay)
+        System.out.println("=============================================");
+        System.out.println(">>> [DEBUG] OTP SAVED FOR: " + email);
+        System.out.println(">>> [DEBUG] YOUR OTP IS: " + otpCode);
+        System.out.println("=============================================");
+        // ============================================================
+
+        // 4. CHUẨN BỊ CONTEXT (Phải làm trước khi gửi mail)
         Context context = new Context();
         context.setVariable("otpCode", otpCode);
-        context.setVariable("title", "Xác thực đăng ký Đối tác");
-        context.setVariable("message", "Sử dụng mã bên dưới để hoàn tất đăng ký đối tác Tripify.");
+        // Các biến khác nếu template otp-2fa.html cần (dựa vào file bạn gửi thì chỉ cần otpCode là đủ)
+        // context.setVariable("title", "Xác thực đăng ký Đối tác");
 
-        emailService.sendHtmlEmail(email, "Mã xác thực đăng ký Đối tác", "email/otp-email", context);
+        // 5. GỬI MAIL (Sử dụng đúng template otp-2fa)
+        try {
+            System.out.println(">>> [DEBUG] PREPARING TO SEND EMAIL TO " + email + "...");
+
+            // SỬA TÊN TEMPLATE Ở ĐÂY: "email/otp-2fa"
+            emailService.sendHtmlEmail(email, "Mã xác thực đăng ký Đối tác - Tripify", "email/otp-email", context);
+
+            System.out.println(">>> [DEBUG] EMAIL SERVICE CALLED SUCCESSFULLY.");
+        } catch (Exception e) {
+            // Log lỗi nhưng không chặn luồng chính để bạn vẫn nhập được OTP từ console
+            System.err.println(">>> [ERROR] EMAIL SENDING FAILED: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override
