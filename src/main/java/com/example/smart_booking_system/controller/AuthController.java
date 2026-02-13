@@ -2,6 +2,7 @@ package com.example.smart_booking_system.controller;
 
 import com.example.smart_booking_system.dto.request.auth.*;
 import com.example.smart_booking_system.dto.response.ApiResponse;
+import com.example.smart_booking_system.dto.response.auth.VerifyOwnerOtpResponse;
 import com.example.smart_booking_system.dto.response.auth.LoginResponse;
 import com.example.smart_booking_system.exception.BadRequestException;
 import com.example.smart_booking_system.security.CustomUserDetails;
@@ -152,6 +153,25 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Tạo mật khẩu thành công"));
     }
 
+    // --- Owner Registration Flow ---
+
+    @PostMapping("/owner/check-email")
+    public ResponseEntity<ApiResponse<Void>> checkOwnerEmail(@Valid @RequestBody CheckEmailRequest request) {
+        authService.checkOwnerEmail(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Email is available for registration."));
+    }
+
+    @PostMapping("/owner/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendOwnerOtp(@Valid @RequestBody CheckEmailRequest request) {
+        authService.sendOwnerOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi đến email.", null));
+    }
+
+    @PostMapping("/owner/verify-otp")
+    public ResponseEntity<ApiResponse<VerifyOwnerOtpResponse>> verifyOwnerOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        VerifyOwnerOtpResponse response = authService.verifyOwnerOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("OTP verification successful.", response));
+    }
     // --- 2FA ENDPOINTS ---
 
     @PostMapping("/2fa/request-toggle")

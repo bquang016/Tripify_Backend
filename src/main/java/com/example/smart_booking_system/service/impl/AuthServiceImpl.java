@@ -2,10 +2,13 @@ package com.example.smart_booking_system.service.impl;
 
 import com.example.smart_booking_system.dto.request.auth.*;
 import com.example.smart_booking_system.dto.response.auth.LoginResponse;
+import com.example.smart_booking_system.dto.response.auth.VerifyOwnerOtpResponse;
 import com.example.smart_booking_system.entity.Role;
 import com.example.smart_booking_system.entity.SocialAccount;
 import com.example.smart_booking_system.entity.User;
 import com.example.smart_booking_system.exception.*;
+import com.example.smart_booking_system.repository.OwnerApplicationRepository;
+import com.example.smart_booking_system.enums.ApplicationStatus;
 import com.example.smart_booking_system.repository.RoleRepository;
 import com.example.smart_booking_system.repository.SocialAccountRepository;
 import com.example.smart_booking_system.repository.UserRepository;
@@ -46,7 +49,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
-    
+    private final OwnerApplicationRepository ownerApplicationRepository;
+
     // Thay thế Redis bằng Map trong RAM
     private final Map<String, OtpInfo> otpStorage = new ConcurrentHashMap<>();
     private final Map<String, RegisterRequest> pendingRegistrations = new ConcurrentHashMap<>();
@@ -62,48 +66,73 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private SocialAccountRepository socialAccountRepository;
 
-    // ✅ 1. HÀM KIỂM TRA ĐỘ MẠNH MẬT KHẨU (PRIVATE HELPER)
     private boolean isStrongPassword(String password) {
-        // Regex: 
-        // (?=.*[0-9])       : Ít nhất 1 số
-        // (?=.*[a-z])       : Ít nhất 1 chữ thường
-        // (?=.*[A-Z])       : Ít nhất 1 chữ hoa
-        // (?=.*[@#$%^&+=!]) : Ít nhất 1 ký tự đặc biệt
-        // .{8,}             : Độ dài tối thiểu 8 ký tự
         String regex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!.*])(?=\\S+$).{8,}$";
         return password != null && password.matches(regex);
     }
-    // --- CÁC HÀM MỚI CHO OWNER REGISTRATION (ĐÃ SỬA LỖI) ---
 
     @Override
-    public void sendOwnerRegistrationOtp(String email) {
-        // 1. Kiểm tra email đã tồn tại
-        if (userRepository.existsByEmail(email)) {
-            throw new BadRequestException("Email này đã được đăng ký.");
-        }
+    @Transactional
+    public void sendOwnerOtp(String email) {
+        checkOwnerEmail(email); // Giữ nguyên check cũ
 
-        // 2. Tạo OTP 6 số (Tái sử dụng logic của hàm sendOtp có sẵn)
+        // 1. Tạo OTP
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
+        LocalDateTime otpExpiry = LocalDateTime.now().plusMinutes(5);
 
-        // 3. Lưu vào Map otpStorage (dùng biến có sẵn của bạn)
-        long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000); // 5 phút
-        otpStorage.put(email, new OtpInfo(otpCode, expiryTime));
+        // 2. Lưu vào DB
+        com.example.smart_booking_system.entity.OwnerApplication application =
+                ownerApplicationRepository.findByEmail(email).orElseGet(() -> {
+                    com.example.smart_booking_system.entity.OwnerApplication newApp = new com.example.smart_booking_system.entity.OwnerApplication();
+                    newApp.setEmail(email);
+                    newApp.setStatus(ApplicationStatus.PENDING);
+                    return newApp;
+                });
 
-        // 4. Gửi Email
-        org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+        application.setOtp(otpCode);
+        application.setOtpExpiry(otpExpiry);
+        application.setEmailVerified(false);
+        ownerApplicationRepository.save(application);
+
+        // ============================================================
+        // 3. DEBUG TRÊN CONSOLE (Quan trọng: Lấy mã ở đây để test ngay)
+        System.out.println("=============================================");
+        System.out.println(">>> [DEBUG] OTP SAVED FOR: " + email);
+        System.out.println(">>> [DEBUG] YOUR OTP IS: " + otpCode);
+        System.out.println("=============================================");
+        // ============================================================
+
+        // 4. CHUẨN BỊ CONTEXT (Phải làm trước khi gửi mail)
+        Context context = new Context();
         context.setVariable("otpCode", otpCode);
-        context.setVariable("title", "Xác thực đăng ký Đối tác");
-        context.setVariable("message", "Sử dụng mã bên dưới để hoàn tất đăng ký đối tác Tripify.");
+        // Các biến khác nếu template otp-2fa.html cần (dựa vào file bạn gửi thì chỉ cần otpCode là đủ)
+        // context.setVariable("title", "Xác thực đăng ký Đối tác");
 
-        emailService.sendHtmlEmail(email, "Mã xác thực đăng ký Đối tác", "email/otp-email", context);
+        // 5. GỬI MAIL (Sử dụng đúng template otp-2fa)
+        try {
+            System.out.println(">>> [DEBUG] PREPARING TO SEND EMAIL TO " + email + "...");
+
+            // SỬA TÊN TEMPLATE Ở ĐÂY: "email/otp-2fa"
+            emailService.sendHtmlEmail(email, "Mã xác thực đăng ký Đối tác - Tripify", "email/otp-email", context);
+
+            System.out.println(">>> [DEBUG] EMAIL SERVICE CALLED SUCCESSFULLY.");
+        } catch (Exception e) {
+            // Log lỗi nhưng không chặn luồng chính để bạn vẫn nhập được OTP từ console
+            System.err.println(">>> [ERROR] EMAIL SENDING FAILED: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override
-    @Transactional // Nên thêm Transactional để đảm bảo toàn vẹn dữ liệu
-    public LoginResponse verifyOwnerOtpAndRegister(OwnerRegisterRequest request) {
-        // 1. Validate OTP
-        OtpInfo info = otpStorage.get(request.getEmail());
-        if (info == null || !info.getCode().equals(request.getOtp()) || System.currentTimeMillis() > info.getExpiryTime()) {
+    @Transactional
+    public VerifyOwnerOtpResponse verifyOwnerOtp(VerifyOtpRequest request) {
+        com.example.smart_booking_system.entity.OwnerApplication application = ownerApplicationRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Yêu cầu không hợp lệ. Vui lòng thử lại từ đầu."));
+
+        if (application.getOtp() == null ||
+            !application.getOtp().equals(request.getOtp()) ||
+            application.getOtpExpiry() == null ||
+            application.getOtpExpiry().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
 
@@ -137,35 +166,27 @@ public class AuthServiceImpl implements AuthService {
         // Tạo CustomUserDetails từ user vừa lưu để nạp vào Context
         com.example.smart_booking_system.security.CustomUserDetails userDetails =
                 com.example.smart_booking_system.security.CustomUserDetails.create(savedUser);
+        // OTP is valid, update application
+        application.setEmailVerified(true);
+        application.setOtp(null);
+        application.setOtpExpiry(null);
+        ownerApplicationRepository.save(application);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
-        );
-
-        // --- ĐOẠN SỬA LỖI: CHỈ KHAI BÁO 1 LẦN ---
-        String accessToken = tokenProvider.generateToken(authentication);
-        long expiresIn = tokenProvider.getExpirationTime();
-        // ----------------------------------------
-
-        // 4. Trả về LoginResponse
-        Set<String> roles = java.util.Set.of("OWNER");
-
-        LoginResponse.UserResponse userResponse = new LoginResponse.UserResponse(
-                savedUser.getUserId(),
-                savedUser.getFullName(),
-                savedUser.getEmail(),
-                savedUser.getPhoneNumber(),
-                savedUser.getIsEmailVerified(),
-                savedUser.getStatus(),
-                roles
-        );
-
-        return new LoginResponse(accessToken, expiresIn, userResponse);
+        // Generate and return the temporary token for the next steps
+        String temporaryToken = tokenProvider.generateTemporaryToken(request.getEmail());
+        return new VerifyOwnerOtpResponse(temporaryToken);
     }
 
-    // ✅ Tạo mật khẩu (cho user social chưa có pass)
+    @Override
+    public void checkOwnerEmail(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email đã được sử dụng bởi một tài khoản khác.");
+        }
+        if (ownerApplicationRepository.existsByEmailAndStatus(email, ApplicationStatus.PENDING)) {
+            throw new ConflictException("Một đơn đăng ký với email này đang được chờ duyệt.");
+        }
+    }
+
     @Override
     public void createPassword(String userId, String newPassword) {
         User user = userRepository.findById(userId)
@@ -175,7 +196,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tài khoản này đã có mật khẩu. Vui lòng dùng chức năng Đổi mật khẩu.");
         }
 
-        // Check độ mạnh
         if (!isStrongPassword(newPassword)) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -184,7 +204,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Ngắt kết nối MXH
     @Override
     @Transactional
     public void unlinkSocialAccount(String userId, String providerName) {
@@ -212,7 +231,6 @@ public class AuthServiceImpl implements AuthService {
         socialAccountRepository.delete(account);
     }
 
-    // ✅ Đăng ký người dùng mới
     @Override
     @Transactional
     public void register(RegisterRequest request) {
@@ -221,7 +239,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu xác nhận không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -231,12 +248,10 @@ public class AuthServiceImpl implements AuthService {
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
-            // Nếu tài khoản tồn tại VÀ đang bị khóa -> Báo lỗi chặn đăng ký
             if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "BANNED".equalsIgnoreCase(user.getStatus())) {
                 throw new ForbiddenException("Tài khoản của bạn đã bị khóa. Không thể đăng ký lại với email này.");
             }
 
-            // Nếu tài khoản tồn tại nhưng không bị khóa (đang Active/Inactive) -> Báo lỗi trùng email như cũ
             throw new ConflictException("Email đã được đăng ký");
         }
 
@@ -314,38 +329,39 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(token, expiresIn, userResponse);
     }
 
-    // ✅ Đăng nhập
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        // 1. Chuẩn hóa email để tránh lỗi khoảng trắng hoặc chữ hoa/thường
         String normalizedEmail = request.getEmail().trim().toLowerCase();
-        // 1. Tìm user
+        
+        // 2. Tìm user
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không chính xác"));
 
-        // 2. CHECK XÁC THỰC EMAIL
+        // 3. CHECK XÁC THỰC EMAIL
         if (Boolean.FALSE.equals(user.getIsEmailVerified())) {
             throw new DisabledException("Tài khoản chưa được xác thực. Vui lòng kiểm tra email!");
         }
 
-        // 3. CHECK TRẠNG THÁI KHÓA
+        // 4. CHECK TRẠNG THÁI KHÓA (SUSPENDED hoặc BANNED)
         if ("SUSPENDED".equalsIgnoreCase(user.getStatus()) || "BANNED".equalsIgnoreCase(user.getStatus())) {
             throw new LockedException("Tài khoản của bạn đã bị khóa: " + user.getStatus());
         }
 
-        // 4. Kiểm tra mật khẩu trước
+        // 5. Kiểm tra mật khẩu
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác");
         }
 
-        // 5. KIỂM TRA 2FA
+        // 6. KIỂM TRA 2FA
         if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
             // Gửi OTP LOGIN_2FA
             sendOtp(normalizedEmail, com.example.smart_booking_system.enums.OtpType.LOGIN_2FA);
             return LoginResponse.twoFaRequired();
         }
 
-        // 6. Nếu không bật 2FA, thực hiện login như bình thường
+        // 7. Nếu không bật 2FA hoặc mọi thứ hợp lệ, thực hiện authenticate
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
         );
@@ -373,7 +389,6 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(token, expiresIn, userResponse);
     }
 
-    // ✅ Xác minh email
     @Override
     @Transactional
     public void verifyEmail(String token) {
@@ -392,7 +407,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Quên mật khẩu
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -417,7 +431,6 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendOtpEmail(normalizedEmail, otpCode, com.example.smart_booking_system.enums.OtpType.FORGOT_PASSWORD);
     }
 
-    // ✅ Đặt lại mật khẩu (Reset Password)
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
@@ -425,7 +438,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu xác nhận không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getNewPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -445,7 +457,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Đổi mật khẩu (Change Password)
     @Override
 
     @Transactional
@@ -461,7 +472,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Mật khẩu mới không khớp");
         }
 
-        // Check độ mạnh mật khẩu
         if (!isStrongPassword(request.getNewPassword())) {
             throw new BadRequestException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
         }
@@ -471,7 +481,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    // ✅ Gửi lại email xác minh
     @Override
     @Transactional
     public void resendVerificationEmail(String email) {
@@ -505,29 +514,31 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendOtp(String email, com.example.smart_booking_system.enums.OtpType type) {
-        String normalizedEmail = email.toLowerCase();
+        // 1. Chuẩn hóa email
+        String normalizedEmail = email.trim().toLowerCase();
         boolean userExists = userRepository.existsByEmail(normalizedEmail);
 
-        // 1. Đối với ĐĂNG KÝ: Không được phép gửi OTP nếu email đã có trong hệ thống
+        // 2. Logic kiểm tra theo từng loại OTP
+        // Đối với ĐĂNG KÝ: Không gửi OTP nếu email đã tồn tại
         if (type == com.example.smart_booking_system.enums.OtpType.REGISTER && userExists) {
             throw new ConflictException("Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.");
         }
 
-        // 2. Đối với QUÊN MẬT KHẨU hoặc 2FA: Email BUỘC PHẢI tồn tại thì mới gửi được
+        // Đối với QUÊN MẬT KHẨU hoặc 2FA: Email BUỘC PHẢI tồn tại
         if ((type == com.example.smart_booking_system.enums.OtpType.FORGOT_PASSWORD || 
-             type == com.example.smart_booking_system.enums.OtpType.TWO_FACTOR_AUTH) && !userExists) {
+             type == com.example.smart_booking_system.enums.OtpType.LOGIN_2FA) && !userExists) {
             throw new ResourceNotFoundException("Không tìm thấy tài khoản với email này.");
         }
 
-        // Tạo mã OTP 6 số
+        // 3. Tạo mã OTP 6 số
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
         System.out.println("DEBUG: OTP generated for " + normalizedEmail + " is: " + otpCode);
 
-        // Lưu vào Map - Hết hạn sau 5 phút
+        // 4. Lưu vào bộ nhớ tạm (otpStorage) - Hết hạn sau 5 phút
         long expiryTime = System.currentTimeMillis() + (5 * 60 * 1000);
         otpStorage.put(normalizedEmail, new OtpInfo(otpCode, expiryTime));
 
-        // Gửi email qua EmailService
+        // 5. Gửi email qua EmailService - Sử dụng email đã chuẩn hóa
         emailService.sendOtpEmail(normalizedEmail, otpCode, type);
     }
 
@@ -543,11 +554,13 @@ public class AuthServiceImpl implements AuthService {
         OtpInfo info = otpStorage.get(normalizedEmail);
         if (info == null) return null;
 
+        // Kiểm tra hết hạn
         if (System.currentTimeMillis() > info.getExpiryTime()) {
             otpStorage.remove(normalizedEmail);
             return null;
         }
 
+        // Kiểm tra khớp mã
         if (!info.getCode().equals(cleanCode)) return null;
 
         // 2. Nếu OTP đúng và loại là FORGOT_PASSWORD, sinh Secure Token (UUID)
@@ -558,17 +571,17 @@ public class AuthServiceImpl implements AuthService {
             String secureToken = UUID.randomUUID().toString();
             user.setResetPasswordToken(secureToken);
             user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(15));
-            userRepository.save(user);
-            
+            userRepository.save(user); // Sửa: Dùng userRepository để lưu
             otpStorage.remove(normalizedEmail);
             return secureToken;
         }
 
-        // 3. Các loại khác trả về SUCCESS
+        // 3. Xóa OTP sau khi verify thành công cho các trường hợp còn lại (Register, 2FA, Login)
+        otpStorage.remove(normalizedEmail);
         return "SUCCESS";
     }
 
-    // --- 2FA IMPLEMENTATION ---
+    // --- 2FA IMPLEMENTATION (Giữ nguyên từ develop) ---
 
     @Override
     @Transactional
@@ -586,12 +599,13 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        // Gọi lại verifyOtp để kiểm tra mã
         if (verifyOtp(user.getEmail(), otp, com.example.smart_booking_system.enums.OtpType.TWO_FACTOR_AUTH) == null) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
         }
 
         // Đảo ngược trạng thái 2FA
-        user.setTwoFactorEnabled(!user.getTwoFactorEnabled());
+        user.setTwoFactorEnabled(!Boolean.TRUE.equals(user.getTwoFactorEnabled()));
         userRepository.save(user);
     }
 

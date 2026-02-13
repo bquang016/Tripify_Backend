@@ -8,6 +8,7 @@ import com.example.smart_booking_system.exception.BadRequestException;
 import com.example.smart_booking_system.exception.ResourceNotFoundException;
 import com.example.smart_booking_system.repository.UserDetailRepository;
 import com.example.smart_booking_system.repository.UserRepository;
+import com.example.smart_booking_system.dto.request.owner.OwnerProfileRequest;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -144,6 +145,87 @@ public class UserDetailService {
 
         // 7. Trả về DTO (getUserDetail phải convert KEY -> URL)
         return getUserDetail(user.getEmail());
+    }
+    @Transactional
+    public UserDetail updateOwnerProfile(User user, OwnerProfileRequest request) {
+        // 1. Cập nhật thông tin cơ bản ở bảng User
+        if (StringUtils.hasText(request.getFullName())) {
+            user.setFullName(request.getFullName());
+        }
+        if (StringUtils.hasText(request.getPhoneNumber())) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        userRepository.save(user);
+
+        // 2. Cập nhật hoặc tạo mới UserDetail
+        UserDetail userDetail = userDetailRepository.findByUser(user)
+                .orElse(new UserDetail());
+
+        if (userDetail.getUser() == null) {
+            userDetail.setUser(user);
+        }
+
+        // Các setter này sẽ hết lỗi sau khi bạn làm Bước 1 và Bước 2
+        userDetail.setIdentityCardNumber(request.getIdentityCardNumber());
+        userDetail.setDateOfBirth(request.getDateOfBirth());
+        userDetail.setGender(request.getGender());
+        userDetail.setAddress(request.getAddress());
+        userDetail.setCity(request.getCity());
+        userDetail.setCountry(request.getCountry());
+
+        if (StringUtils.hasText(request.getProfilePhotoUrl())) {
+            userDetail.setProfilePhotoUrl(request.getProfilePhotoUrl());
+        }
+
+        return userDetailRepository.save(userDetail);
+    }
+    // Thêm hàm mới trong UserDetailService
+    @Transactional
+    public UserDetail updateOwnerProfileWithImages(User user, OwnerProfileRequest request,
+                                                   MultipartFile avatar,
+                                                   MultipartFile cccdFront,
+                                                   MultipartFile cccdBack) {
+
+        // 1. Cập nhật User cơ bản
+        if (StringUtils.hasText(request.getFullName())) user.setFullName(request.getFullName());
+        if (StringUtils.hasText(request.getPhoneNumber())) user.setPhoneNumber(request.getPhoneNumber());
+        userRepository.save(user);
+
+        // 2. Lấy UserDetail
+        UserDetail detail = userDetailRepository.findByUser(user).orElse(new UserDetail());
+        if (detail.getUser() == null) detail.setUser(user);
+
+        // 3. Map dữ liệu
+        detail.setIdentityCardNumber(request.getIdentityCardNumber());
+        detail.setDateOfBirth(request.getDateOfBirth());
+        detail.setGender(request.getGender());
+        detail.setAddress(request.getAddress());
+        detail.setCity(request.getCity());
+        detail.setCountry(request.getCountry());
+
+        // 4. XỬ LÝ UPLOAD ẢNH (Quan trọng)
+
+        // a. Avatar (Không bắt buộc)
+        if (avatar != null && !avatar.isEmpty()) {
+            String avatarKey = fileStorageService.storeImageFile(avatar, "avatars");
+            detail.setProfilePhotoUrl(avatarKey);
+        }
+
+        // b. CCCD Mặt trước (Bắt buộc - nên check ở Controller hoặc đây)
+        if (cccdFront != null && !cccdFront.isEmpty()) {
+            String frontKey = fileStorageService.storeImageFile(cccdFront, "cccd/front");
+            // Lưu vào DB (Cần thêm cột cccdFrontUrl trong Entity UserDetail nếu chưa có)
+            detail.setCccdFrontUrl(frontKey); // Giả sử bạn đã thêm cột này
+        }
+
+        // c. CCCD Mặt sau
+        if (cccdBack != null && !cccdBack.isEmpty()) {
+            String backKey = fileStorageService.storeImageFile(cccdBack, "cccd/back");
+            // Lưu vào DB
+            detail.setCccdBackUrl(backKey); // Giả sử bạn đã thêm cột này
+        }
+
+        return userDetailRepository.save(detail);
     }
 
 

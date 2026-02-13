@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 @AllArgsConstructor
@@ -16,6 +17,7 @@ public class VerifyOtpRequest {
     private String email;
 
     @NotBlank(message = "Mã OTP không được để trống")
+    @JsonProperty("otpCode")
     private String otp;
 
     private OtpType type;

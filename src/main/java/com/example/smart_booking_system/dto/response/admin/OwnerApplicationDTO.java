@@ -32,6 +32,49 @@ public class OwnerApplicationDTO {
     private String applicantAvatar;
     private LocalDate applicantDob;
     private String personalIdCard;
+    private String gender;
 
     private String reviewedByAdminName;
+
+    // Additional Property & Payment Info for Detailed View
+    private PropertyInfoDTO propertyInfo;
+    private PaymentInfoDTO paymentInfo;
+
+    @Data
+    public static class PropertyInfoDTO {
+        private String propertyName;
+        private String propertyType;
+        private String description;
+        private String propertyAddress;
+        private String propertyCity;
+        private String propertyDistrict;
+        private String propertyWard;
+        private double latitude;
+        private double longitude;
+        private String businessLicenseNumber;
+        private double price;
+        private double weekendPrice;
+        private int capacity;
+        private double area;
+        private java.util.List<String> propertyImageUrls;
+        private java.util.List<String> amenityNames;
+        private PoliciesDTO policies;
+    }
+
+    @Data
+    public static class PoliciesDTO {
+        private String checkInTime;
+        private String checkOutTime;
+        private int minimumAge;
+        private boolean allowFreeCancellation;
+        private Integer freeCancellationDays;
+    }
+
+    @Data
+    public static class PaymentInfoDTO {
+        private String paymentMethod;
+        private String bankName;
+        private String accountHolderName;
+        private String accountNumber;
+    }
 }

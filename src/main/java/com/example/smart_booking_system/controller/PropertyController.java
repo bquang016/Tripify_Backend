@@ -1,8 +1,10 @@
 package com.example.smart_booking_system.controller;
 
+import com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest;
 import com.example.smart_booking_system.dto.response.property.PropertyMapDTO;
 import com.example.smart_booking_system.exception.ForbiddenException;
 import com.example.smart_booking_system.service.PropertyService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +61,29 @@ public class PropertyController {
             return ResponseEntity
                     .internalServerError()
                     .body("Error adding property: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/register-info")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<?> registerPropertyInfo(
+            @jakarta.validation.Valid @RequestBody com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest request,
+            Authentication authentication
+    ) {
+        try {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            String ownerId = userDetails.getUserId();
+
+            PropertyDetailDTO newProperty = propertyService.registerProperty(request, ownerId);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(
+                    ApiResponse.success("Khởi tạo hồ sơ khách sạn thành công!", newProperty)
+            );
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.error("Lỗi khi đăng ký: " + e.getMessage())
+            );
         }
     }
 

@@ -92,6 +92,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/properties/featured").permitAll()
                         .requestMatchers("/api/v1/properties/{id}").permitAll()
                         .requestMatchers("/api/v1/payments/**").authenticated()
+                        .requestMatchers("/api/v1/auth/owner/**").permitAll()
+                        .requestMatchers("/api/v1/owner/register/**").permitAll()
+                        .requestMatchers("/api/v1/owner-registration/**").permitAll()
 
                         // ===== 2. GENERAL AUTHENTICATED ROUTES =====
                         .requestMatchers(
@@ -110,7 +113,6 @@ public class SecurityConfig {
 
                         // ===== 5. CUSTOMER ROUTES =====
                         .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
-                        .requestMatchers("/api/v1/applications/owner/**").hasRole("CUSTOMER")
 
                         // ===== 6. MIXED/COMBO ROUTES (Owner & Admin) =====
                         .requestMatchers("/api/v1/properties/add").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")

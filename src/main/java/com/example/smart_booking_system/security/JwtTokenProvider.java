@@ -44,6 +44,20 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String generateTemporaryToken(String email) {
+        Date now = new Date();
+        // 1 hour expiration for temporary token
+        Date expiryDate = new Date(now.getTime() + 60 * 60 * 1000);
+
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("type", "temporary")
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .compact();
+    }
+
     /**
      * Get user ID from JWT token
      */
@@ -67,7 +81,11 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
 
-        return claims.get("email", String.class);
+        String email = claims.get("email", String.class);
+        if (email == null) {
+            email = claims.getSubject();
+        }
+        return email;
     }
 
     /**
@@ -92,6 +110,15 @@ public class JwtTokenProvider {
             System.err.println("JWT claims string is empty");
         }
         return false;
+    }
+
+    public <T> T getClaimFromToken(String token, String claimName, Class<T> requiredType) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.get(claimName, requiredType);
     }
 
     /**
