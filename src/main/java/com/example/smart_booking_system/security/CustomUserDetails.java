@@ -38,13 +38,13 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
      */
     public static CustomUserDetails create(User user) {
         Set<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRoleName()))
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName()))
                 .collect(Collectors.toSet());
 
         // Add permissions as authorities
         user.getRoles().forEach(role -> {
             role.getPermissions().forEach(permission -> {
-                authorities.add(new SimpleGrantedAuthority(permission.getName()));
+                authorities.add(new SimpleGrantedAuthority(permission.getCode()));
             });
         });
 

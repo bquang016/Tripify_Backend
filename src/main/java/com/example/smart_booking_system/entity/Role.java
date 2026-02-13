@@ -16,16 +16,21 @@ public class Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer roleId;
+    private Long id;
 
     @Column(nullable = false, unique = true, length = 64)
-    private String roleName;
+    private String name;
+
+    private String description;
+
+    @Column(nullable = false)
+    private Boolean isSuper = false;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "rolePermissions",
-            joinColumns = @JoinColumn(name = "roleId"),
-            inverseJoinColumns = @JoinColumn(name = "permissionId")
+            name = "role_permissions",
+            joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
     private java.util.Set<Permission> permissions = new java.util.HashSet<>();
 

@@ -46,7 +46,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     /**
      * Find users with specific role
      */
-    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.roleName = :roleName")
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
     List<User> findByRoleName(@Param("roleName") String roleName);
 
     /**
@@ -81,9 +81,9 @@ public interface UserRepository extends JpaRepository<User, String> {
             "WHERE (:keyword IS NULL OR :keyword = '' OR " +
             "       LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "       LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:role IS NULL OR :role = '' OR r.roleName = :role) " +
+            "AND (:role IS NULL OR :role = '' OR r.name = :role) " +
             "AND (:status IS NULL OR :status = '' OR u.status = :status) " +
-            "AND NOT EXISTS (SELECT subR FROM u.roles subR WHERE subR.roleName = 'ADMIN') " +
+            "AND NOT EXISTS (SELECT subR FROM u.roles subR WHERE subR.name = 'ADMIN') " +
             "AND (:rank IS NULL OR u.membershipRank = :rank)")
     Page<User> findUsersWithFilter(
             @Param("keyword") String keyword,
@@ -104,7 +104,7 @@ public interface UserRepository extends JpaRepository<User, String> {
   )
   FROM User u
   JOIN u.roles r
-  WHERE r.roleName = 'OWNER'
+  WHERE r.name = 'OWNER'
   ORDER BY u.fullName
 """)
     List<OwnerSelectDTO> findOwnersForDashboard();

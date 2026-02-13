@@ -29,7 +29,7 @@ import java.util.Map;     // ✅ Import thêm
 @RestController
 @RequestMapping("/api/v1/admin/owner-applications")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminApplicationController {
 
     private final OwnerApplicationService ownerApplicationService;

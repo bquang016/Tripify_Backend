@@ -268,6 +268,27 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
         }
         // --- FIX END ---
 
+        ApplicationStatus newStatus = reviewDTO.getStatus();
+        if (newStatus == null)
+            throw new IllegalArgumentException("Trạng thái mới không được để trống.");
+
+        if (newStatus != ApplicationStatus.APPROVED && newStatus != ApplicationStatus.REJECTED)
+            throw new IllegalArgumentException("Chỉ được chuyển sang APPROVED hoặc REJECTED.");
+
+        application.setAdminReason(reviewDTO.getReason());
+        application.setStatus(newStatus);
+        application.setReviewedAt(LocalDateTime.now());
+        application.setReviewedBy(admin);
+
+        User applicant = application.getUserId();
+
+        if (newStatus == ApplicationStatus.APPROVED) {
+            Role ownerRole = roleRepository.findByName("OWNER")
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy ROLE_OWNER"));
+
+            applicant.addRole(ownerRole);
+            userRepository.save(applicant);
+        }
         try {
             OwnerApplicationData data = objectMapper.readValue(app.getApplicationData(), OwnerApplicationData.class);
             OwnerApplicationDTO dto = new OwnerApplicationDTO();

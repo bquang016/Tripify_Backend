@@ -47,7 +47,7 @@ public class BookingController {
     // ADMIN APPROVE REFUND (Duyệt hoàn tiền)
     // ==========================================
     @PutMapping("/approve-refund/{bookingId}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> approveRefund(@PathVariable int bookingId) {
         try {
             bookingService.approveRefund(bookingId);
@@ -99,7 +99,7 @@ public class BookingController {
     // GET ALL BOOKINGS (ADMIN)
     // ==========================================
     @GetMapping("")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> getAllBookings() {
         try {
             return ResponseEntity.ok(bookingService.getAllBookings());
@@ -109,7 +109,7 @@ public class BookingController {
     }
 
     @PutMapping("/{bookingId}/check-in")
-    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('OWNER') or hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> checkIn(@PathVariable int bookingId) {
         bookingService.checkInBooking(bookingId);
         return ResponseEntity.ok("Check-in thành công");
@@ -117,7 +117,7 @@ public class BookingController {
 
     // Check-out (Mới - Thay thế logic checkout cũ)
     @PutMapping("/checkout/{bookingId}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('OWNER') or hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> checkOut(@PathVariable int bookingId) {
         try {
             bookingService.checkOutBooking(bookingId);
