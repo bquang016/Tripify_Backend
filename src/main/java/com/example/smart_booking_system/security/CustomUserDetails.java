@@ -28,6 +28,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     private Collection<? extends GrantedAuthority> authorities;
     private Map<String, Object> attributes;
     private List<SocialAccount> socialAccounts;
+    private boolean twoFactorEnabled;
 
     // ✅ THÊM TRƯỜNG MỚI
     private boolean hasPassword;
@@ -39,6 +40,13 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         Set<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRoleName()))
                 .collect(Collectors.toSet());
+
+        // Add permissions as authorities
+        user.getRoles().forEach(role -> {
+            role.getPermissions().forEach(permission -> {
+                authorities.add(new SimpleGrantedAuthority(permission.getName()));
+            });
+        });
 
         // ✅ LOGIC KIỂM TRA MẬT KHẨU
         // Mật khẩu thật (do BCrypt mã hóa) luôn bắt đầu bằng "$2a$".
@@ -55,6 +63,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
                 authorities,
                 null, // Attributes là null khi login thường
                 user.getSocialAccounts(),
+                user.getTwoFactorEnabled() != null && user.getTwoFactorEnabled(), // ✅ populated from user entity
                 hasPasswordSet // ✅ Truyền giá trị vào constructor
         );
     }

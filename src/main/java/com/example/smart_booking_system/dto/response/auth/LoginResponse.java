@@ -16,6 +16,7 @@ public class LoginResponse {
     private String tokenType = "Bearer";
     private Long expiresIn;
     private UserResponse user;
+    private boolean is2faRequired = false;
 
     @Data
     @NoArgsConstructor
@@ -35,5 +36,12 @@ public class LoginResponse {
         this.expiresIn = expiresIn;
         this.user = user;
         this.tokenType = "Bearer";
+        this.is2faRequired = false;
+    }
+
+    public static LoginResponse twoFaRequired() {
+        LoginResponse response = new LoginResponse();
+        response.set2faRequired(true);
+        return response;
     }
 }

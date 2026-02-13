@@ -34,7 +34,13 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Registration successful. Please check your email to verify your account."));
+                .body(ApiResponse.success("Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra để hoàn tất đăng ký."));
+    }
+
+    @PostMapping("/verify-register")
+    public ResponseEntity<ApiResponse<LoginResponse>> verifyRegister(@Valid @RequestBody VerifyOtpRequest request) {
+        LoginResponse response = authService.verifyRegisterOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công", response));
     }
 
     @PostMapping("/login")
@@ -89,10 +95,10 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        boolean isValid = authService.verifyOtp(request.getEmail(), request.getOtpCode());
-        if (isValid) {
-            return ResponseEntity.ok(ApiResponse.success("OTP verification successful."));
+    public ResponseEntity<ApiResponse<String>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        String token = authService.verifyOtp(request.getEmail(), request.getOtp(), request.getType());
+        if (token != null) {
+            return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công.", token));
         } else {
             throw new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
@@ -165,5 +171,30 @@ public class AuthController {
     public ResponseEntity<ApiResponse<VerifyOwnerOtpResponse>> verifyOwnerOtp(@Valid @RequestBody VerifyOtpRequest request) {
         VerifyOwnerOtpResponse response = authService.verifyOwnerOtp(request);
         return ResponseEntity.ok(ApiResponse.success("OTP verification successful.", response));
+    // --- 2FA ENDPOINTS ---
+
+    @PostMapping("/2fa/request-toggle")
+    public ResponseEntity<ApiResponse<Void>> request2faToggle(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        authService.request2faToggle(currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP xác thực 2 bước đã được gửi đến email của bạn."));
+    }
+
+    @PostMapping("/2fa/toggle")
+    public ResponseEntity<ApiResponse<Void>> toggle2fa(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestBody Map<String, String> request) {
+        String otp = request.get("otp");
+        if (otp == null) throw new BadRequestException("Mã OTP là bắt buộc");
+        
+        authService.verify2faToggle(currentUser.getUserId(), otp);
+        return ResponseEntity.ok(ApiResponse.success("Cấu hình xác thực 2 bước đã được cập nhật thành công."));
+    }
+
+    @PostMapping("/2fa/verify-login")
+    public ResponseEntity<ApiResponse<LoginResponse>> verify2faLogin(
+            @Valid @RequestBody VerifyOtpRequest request) {
+        LoginResponse response = authService.verify2faLogin(request);
+        return ResponseEntity.ok(ApiResponse.success("Xác thực thành công", response));
     }
 }

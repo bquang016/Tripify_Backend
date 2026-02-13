@@ -4,6 +4,7 @@ import com.example.smart_booking_system.dto.response.SystemLogDetailDTO;
 import com.example.smart_booking_system.dto.response.SystemLogResponseDTO;
 import com.example.smart_booking_system.enums.LogEntityType;
 import com.example.smart_booking_system.service.SystemLogService;
+import com.example.smart_booking_system.security.CheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/system-logs")
 @RequiredArgsConstructor
+@CheckPermission("SYSTEM_LOG_VIEW")
 public class SystemLogController {
 
     private final SystemLogService systemLogService;
