@@ -44,7 +44,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         // Add permissions as authorities
         user.getRoles().forEach(role -> {
             role.getPermissions().forEach(permission -> {
-                authorities.add(new SimpleGrantedAuthority(permission.getName()));
+                authorities.add(new SimpleGrantedAuthority(permission.getCode()));
             });
         });
 
