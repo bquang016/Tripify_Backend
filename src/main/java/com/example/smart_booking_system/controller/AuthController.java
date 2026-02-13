@@ -64,30 +64,6 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Logout successful"));
     }
 
-    @GetMapping("/verify-email")
-    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam("token") String token) {
-        try {
-            authService.verifyEmail(token);
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Email verified successfully"
-            ));
-        } catch (BadRequestException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", e.getMessage()
-            ));
-        }
-    }
-
-
-
-    @PostMapping("/resend-verification")
-    public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestParam String email) {
-        authService.resendVerificationEmail(email);
-        return ResponseEntity.ok(ApiResponse.success("Verification email sent. Please check your inbox."));
-    }
-
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody OtpRequest request) {
         authService.sendOtp(request.getEmail(), request.getType());

@@ -7,8 +7,6 @@ import java.math.BigDecimal;
 
 public interface EmailService {
 
-    void sendVerificationEmail(String toEmail, String fullName, String verificationToken);
-
     void sendResetPasswordEmail(String toEmail, String fullName, String resetToken);
 
     void sendBookingConfirmationEmail(String toEmail, String fullName, String bookingId);

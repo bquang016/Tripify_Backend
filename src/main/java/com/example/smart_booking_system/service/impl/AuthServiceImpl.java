@@ -144,28 +144,6 @@ public class AuthServiceImpl implements AuthService {
             throw new ConflictException("Email này đã được đăng ký.");
         }
 
-        // 2. Tạo User mới role OWNER
-        User user = new User();
-        user.setUserId(UUID.randomUUID().toString()); // Tạo ID
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setFullName("Partner " + request.getEmail());
-        user.setIsEmailVerified(true);
-        user.setStatus("ACTIVE");
-
-        // Dùng AuthProvider.local (chữ thường - khớp với Enum của bạn)
-        user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
-
-        Role ownerRole = roleRepository.findByName("OWNER")
-                .orElseThrow(() -> new ResourceNotFoundException("Role OWNER not found"));
-        user.addRole(ownerRole);
-
-        User savedUser = userRepository.save(user);
-
-        // 3. Generate Token
-        // Tạo CustomUserDetails từ user vừa lưu để nạp vào Context
-        com.example.smart_booking_system.security.CustomUserDetails userDetails =
-                com.example.smart_booking_system.security.CustomUserDetails.create(savedUser);
         // OTP is valid, update application
         application.setEmailVerified(true);
         application.setOtp(null);
@@ -391,24 +369,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void verifyEmail(String token) {
-        User user = userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new BadRequestException("Mã xác minh không hợp lệ"));
-
-        if (user.getVerificationTokenExpiry() == null || user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Mã xác minh đã hết hạn");
-        }
-
-        user.setIsEmailVerified(true);
-        user.setStatus("ACTIVE");
-        user.setVerificationToken(null);
-        user.setVerificationTokenExpiry(null);
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
-    }
-
-    @Override
-    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         String normalizedEmail = request.getEmail().toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
@@ -481,24 +441,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    @Override
-    @Transactional
-    public void resendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
-
-        if (Boolean.TRUE.equals(user.getIsEmailVerified())) {
-            throw new BadRequestException("Email đã được xác minh trước đó");
-        }
-
-        String verificationToken = UUID.randomUUID().toString();
-        user.setVerificationToken(verificationToken);
-        user.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
-    }
     @Override
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

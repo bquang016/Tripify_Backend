@@ -38,29 +38,6 @@ public class EmailServiceImpl implements EmailService {
     }
 
     // ==================================================
-    // 🔹 1. Gửi email xác thực tài khoản
-    // ==================================================
-    @Override
-    public void sendVerificationEmail(String toEmail, String fullName, String verificationToken) {
-        try {
-            String subject = "Xác thực Email - Smart Booking";
-
-            String encodedToken = URLEncoder.encode(verificationToken, StandardCharsets.UTF_8);
-            String verificationUrl = getFrontendBaseUrl() + "verify-email?token=" + encodedToken;
-
-            Context context = new Context();
-            context.setVariable("username", fullName);
-            context.setVariable("verificationUrl", verificationUrl);
-
-            String htmlContent = templateEngine.process("email/verification-email", context);
-            sendHtmlEmailInternal(toEmail, subject, htmlContent);
-
-        } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send verification email", e);
-        }
-    }
-
-    // ==================================================
     // 🔹 2. Gửi email đặt lại mật khẩu
     // ==================================================
     @Override

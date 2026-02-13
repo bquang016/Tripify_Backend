@@ -42,11 +42,6 @@ public class User {
     private String status = "ACTIVE";
 
     @Column(length = 500)
-    private String verificationToken;
-
-    private LocalDateTime verificationTokenExpiry;
-
-    @Column(length = 500)
     private String resetPasswordToken;
 
     @Column(length = 255)

@@ -28,6 +28,7 @@ public class OwnerApplication {
 
     private LocalDateTime otpExpiry;
 
+    @Builder.Default
     private boolean isEmailVerified = false;
 
     @Enumerated(EnumType.STRING)
