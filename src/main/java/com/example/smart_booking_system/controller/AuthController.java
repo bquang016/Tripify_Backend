@@ -171,6 +171,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<VerifyOwnerOtpResponse>> verifyOwnerOtp(@Valid @RequestBody VerifyOtpRequest request) {
         VerifyOwnerOtpResponse response = authService.verifyOwnerOtp(request);
         return ResponseEntity.ok(ApiResponse.success("OTP verification successful.", response));
+    }
     // --- 2FA ENDPOINTS ---
 
     @PostMapping("/2fa/request-toggle")

@@ -130,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new BadRequestException("Yêu cầu không hợp lệ. Vui lòng thử lại từ đầu."));
 
         if (application.getOtp() == null ||
-            !application.getOtp().equals(request.getOtpCode()) ||
+            !application.getOtp().equals(request.getOtp()) ||
             application.getOtpExpiry() == null ||
             application.getOtpExpiry().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Mã OTP không chính xác hoặc đã hết hạn.");
@@ -541,8 +541,7 @@ public class AuthServiceImpl implements AuthService {
             String secureToken = UUID.randomUUID().toString();
             user.setResetPasswordToken(secureToken);
             user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(15));
-            user.save(user); // Đảm bảo repository save user
-            
+            userRepository.save(user); // Sửa: Dùng userRepository để lưu
             otpStorage.remove(normalizedEmail);
             return secureToken;
         }
