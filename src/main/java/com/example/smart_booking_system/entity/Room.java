@@ -45,6 +45,7 @@ public class Room {
     private String description;
 
     // ✅ [FIX] Ánh xạ vào đúng cột 'isActive' trong Database để tránh lỗi insert
+    @Builder.Default
     @Column(name = "isActive")
     private boolean active = true;
 

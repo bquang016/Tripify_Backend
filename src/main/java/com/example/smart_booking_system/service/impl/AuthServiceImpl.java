@@ -144,28 +144,6 @@ public class AuthServiceImpl implements AuthService {
             throw new ConflictException("Email này đã được đăng ký.");
         }
 
-        // 2. Tạo User mới role OWNER
-        User user = new User();
-        user.setUserId(UUID.randomUUID().toString()); // Tạo ID
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setFullName("Partner " + request.getEmail());
-        user.setIsEmailVerified(true);
-        user.setStatus("ACTIVE");
-
-        // Dùng AuthProvider.local (chữ thường - khớp với Enum của bạn)
-        user.setProvider(com.example.smart_booking_system.enums.AuthProvider.local);
-
-        Role ownerRole = roleRepository.findByName("OWNER")
-                .orElseThrow(() -> new ResourceNotFoundException("Role OWNER not found"));
-        user.addRole(ownerRole);
-
-        User savedUser = userRepository.save(user);
-
-        // 3. Generate Token
-        // Tạo CustomUserDetails từ user vừa lưu để nạp vào Context
-        com.example.smart_booking_system.security.CustomUserDetails userDetails =
-                com.example.smart_booking_system.security.CustomUserDetails.create(savedUser);
         // OTP is valid, update application
         application.setEmailVerified(true);
         application.setOtp(null);
