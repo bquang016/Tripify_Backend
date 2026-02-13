@@ -29,11 +29,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
 
     /**
-     * Find user by verification token
-     */
-    Optional<User> findByVerificationToken(String token);
-
-    /**
      * Find user by reset password token
      */
     Optional<User> findByResetPasswordToken(String token);
@@ -48,13 +43,6 @@ public interface UserRepository extends JpaRepository<User, String> {
      */
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
     List<User> findByRoleName(@Param("roleName") String roleName);
-
-    /**
-     * Delete expired verification tokens
-     */
-    @Query("UPDATE User u SET u.verificationToken = NULL, u.verificationTokenExpiry = NULL " +
-            "WHERE u.verificationTokenExpiry < :now")
-    void deleteExpiredVerificationTokens(@Param("now") LocalDateTime now);
 
     /**
      * Delete expired reset password tokens

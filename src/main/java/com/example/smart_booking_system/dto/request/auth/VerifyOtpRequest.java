@@ -17,7 +17,6 @@ public class VerifyOtpRequest {
     private String email;
 
     @NotBlank(message = "Mã OTP không được để trống")
-    @JsonProperty("otpCode")
     private String otp;
 
     private OtpType type;

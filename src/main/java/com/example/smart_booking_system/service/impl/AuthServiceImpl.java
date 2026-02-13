@@ -369,24 +369,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void verifyEmail(String token) {
-        User user = userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new BadRequestException("Mã xác minh không hợp lệ"));
-
-        if (user.getVerificationTokenExpiry() == null || user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Mã xác minh đã hết hạn");
-        }
-
-        user.setIsEmailVerified(true);
-        user.setStatus("ACTIVE");
-        user.setVerificationToken(null);
-        user.setVerificationTokenExpiry(null);
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
-    }
-
-    @Override
-    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         String normalizedEmail = request.getEmail().toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
@@ -459,24 +441,6 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
-    @Override
-    @Transactional
-    public void resendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
-
-        if (Boolean.TRUE.equals(user.getIsEmailVerified())) {
-            throw new BadRequestException("Email đã được xác minh trước đó");
-        }
-
-        String verificationToken = UUID.randomUUID().toString();
-        user.setVerificationToken(verificationToken);
-        user.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
-    }
     @Override
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
