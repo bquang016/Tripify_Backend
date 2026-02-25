@@ -39,11 +39,11 @@ public class FileStorageService {
     );
 
     public FileStorageService(
-            @Value("${r2.access-key-id}") String accessKey,
-            @Value("${r2.secret-access-key}") String secretKey,
+            @Value("${r2.accessKeyId}") String accessKey,
+            @Value("${r2.secretKey}") String secretKey,
             @Value("${r2.endpoint}") String endpoint,
             @Value("${r2.bucket}") String bucketName,
-            @Value("${r2.public-domain}") String publicDomain
+            @Value("${r2.publicDomain}") String publicDomain
     ) {
         this.bucket = bucketName;
         this.publicDomain = publicDomain.endsWith("/") ? publicDomain.substring(0, publicDomain.length() - 1) : publicDomain;
