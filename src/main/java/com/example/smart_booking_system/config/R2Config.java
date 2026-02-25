@@ -14,13 +14,14 @@ import java.net.URI;
 @Configuration
 public class R2Config {
 
-    @Value("${r2.access-key-id}")
+    // Sửa lại cho khớp với r2.accessKeyId trong properties
+    @Value("${r2.accessKeyId}")
     private String accessKeyId;
 
-    @Value("${r2.secret-access-key}")
+    // Sửa lại cho khớp với r2.secretKey trong properties
+    @Value("${r2.secretKey}")
     private String secretAccessKey;
 
-    // Sửa: Đọc endpoint trực tiếp thay vì accountId
     @Value("${r2.endpoint}")
     private String endpoint;
 
@@ -28,15 +29,14 @@ public class R2Config {
     public S3Client s3Client() {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
 
-        // Cấu hình S3 Client để tương thích với R2
         S3Configuration serviceConfiguration = S3Configuration.builder()
-                .pathStyleAccessEnabled(true) // Quan trọng cho R2
+                .pathStyleAccessEnabled(true)
                 .build();
 
         return S3Client.builder()
-                .endpointOverride(URI.create(endpoint)) // Sử dụng endpoint từ .env
+                .endpointOverride(URI.create(endpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.US_EAST_1) // R2 luôn dùng region này (hoặc 'auto')
+                .region(Region.US_EAST_1)
                 .serviceConfiguration(serviceConfiguration)
                 .build();
     }
