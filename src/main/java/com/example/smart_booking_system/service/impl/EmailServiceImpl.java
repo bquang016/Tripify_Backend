@@ -41,6 +41,7 @@ public class EmailServiceImpl implements EmailService {
     // 🔹 2. Gửi email đặt lại mật khẩu
     // ==================================================
     @Override
+    @Async
     public void sendResetPasswordEmail(String toEmail, String fullName, String resetToken) {
         try {
             String subject = "Đặt lại mật khẩu - Smart Booking";
@@ -56,7 +57,7 @@ public class EmailServiceImpl implements EmailService {
             sendHtmlEmailInternal(toEmail, subject, htmlContent);
 
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send reset password email", e);
+            System.err.println("❌ Failed to send reset password email: " + e.getMessage());
         }
     }
 
@@ -64,6 +65,7 @@ public class EmailServiceImpl implements EmailService {
     // 🔹 3. Gửi xác nhận đặt phòng
     // ==================================================
     @Override
+    @Async
     public void sendBookingConfirmationEmail(String toEmail, String fullName, String bookingId) {
         try {
             String subject = "Xác nhận đặt chỗ - Smart Booking";
@@ -77,7 +79,7 @@ public class EmailServiceImpl implements EmailService {
             sendHtmlEmailInternal(toEmail, subject, htmlContent);
 
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send booking confirmation email", e);
+            System.err.println("❌ Failed to send booking confirmation email: " + e.getMessage());
         }
     }
 
@@ -85,6 +87,7 @@ public class EmailServiceImpl implements EmailService {
     // 🔹 4. Gửi thông báo đơn đăng ký chủ sở hữu
     // ==================================================
     @Override
+    @Async
     public void sendOwnerApplicationNotification(String adminEmail, String applicantName, String applicationId) {
         try {
             String subject = "Đơn đăng ký mới từ chủ sở hữu - Smart Booking";
@@ -98,7 +101,7 @@ public class EmailServiceImpl implements EmailService {
             sendHtmlEmailInternal(adminEmail, subject, htmlContent);
 
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send owner application notification", e);
+            System.err.println("❌ Failed to send owner application notification: " + e.getMessage());
         }
     }
 
@@ -106,6 +109,7 @@ public class EmailServiceImpl implements EmailService {
     // 🔹 5. Gửi kết quả xét duyệt đơn đăng ký
     // ==================================================
     @Override
+    @Async
     public void sendApplicationStatusEmail(String toEmail, String fullName, String status, String reason) {
         try {
             String subject = "Kết quả xét duyệt đơn đăng ký - Smart Booking";
@@ -120,7 +124,7 @@ public class EmailServiceImpl implements EmailService {
             sendHtmlEmailInternal(toEmail, subject, htmlContent);
 
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send application status email", e);
+            System.err.println("❌ Failed to send application status email: " + e.getMessage());
         }
     }
 
@@ -177,6 +181,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
     public void sendPaymentReminderEmail(String toEmail, String fullName, String bookingId, String totalPrice) {
         try {
             String subject = "Vui lòng thanh toán cho đơn đặt phòng #" + bookingId;
@@ -190,12 +195,13 @@ public class EmailServiceImpl implements EmailService {
             sendHtmlEmailInternal(toEmail, subject, htmlContent);
 
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send payment reminder email", e);
+            System.err.println("❌ Failed to send payment reminder email: " + e.getMessage());
         }
     }
 
     // 1. Gửi khi khách vừa bấm hủy (Chờ duyệt)
     @Override
+    @Async
     public void sendCancellationRequestReceivedEmail(String toEmail, String fullName, String bookingId, BigDecimal totalPrice, BigDecimal penalty, BigDecimal refund) {
         try {
             Context context = new Context();
@@ -215,6 +221,7 @@ public class EmailServiceImpl implements EmailService {
 
     // 2. Gửi khi Admin đã duyệt (Thành công)
     @Override
+    @Async
     public void sendCancellationSuccessEmail(String toEmail, String fullName, String bookingId, String refundAmount, String penaltyAmount) {
         try {
             Context context = new Context();
@@ -231,6 +238,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
     public void sendCheckinReminderEmail(String toEmail, String fullName, String bookingId, String propertyName, String checkInDate) {
         try {
             String subject = "Nhắc nhở: Bạn có lịch check-in vào ngày mai - Smart Booking";
@@ -257,6 +265,7 @@ public class EmailServiceImpl implements EmailService {
 
     // Gửi email cảm ơn sau khi Check-out
     @Override
+    @Async
     public void sendThankYouEmail(String toEmail, String fullName, String bookingId, String propertyName) {
         try {
             String subject = "Cảm ơn bạn đã lựa chọn " + propertyName + " - Smart Booking";
@@ -344,6 +353,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
     public void sendRefundRejectionEmail(String toEmail, String fullName, String bookingId, String rejectionReason) {
         try {
             String subject = "TravelMate - Yêu cầu hoàn tiền #" + bookingId + " bị từ chối";
@@ -364,6 +374,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
     public void sendOtpEmail(String toEmail, String otpCode, com.example.smart_booking_system.enums.OtpType type) {
         try {
             String subject = "Mã OTP xác thực - Smart Booking";
@@ -393,7 +404,7 @@ public class EmailServiceImpl implements EmailService {
             String htmlContent = templateEngine.process(templateName, context);
             sendHtmlEmailInternal(toEmail, subject, htmlContent);
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to send OTP email", e);
+            System.err.println("❌ Failed to send OTP email: " + e.getMessage());
         }
     }
 }
