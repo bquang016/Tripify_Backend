@@ -4,4 +4,8 @@ public enum LogAction {
     CREATE,
     UPDATE,
     DELETE,
+    APPROVE,
+    REJECT,
+    SUSPEND,
+    ACTIVATE
 }
