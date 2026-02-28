@@ -1,6 +1,5 @@
 package com.example.smart_booking_system.service.impl;
 
-
 import com.example.smart_booking_system.dto.PropertyAmenityResponseDTO;
 import com.example.smart_booking_system.dto.PropertyResponseDTO;
 import com.example.smart_booking_system.dto.RoomResponseDTO;
@@ -9,7 +8,6 @@ import com.example.smart_booking_system.dto.request.property.PropertyApplication
 import com.example.smart_booking_system.dto.response.property.PropertyDetailDTO;
 import com.example.smart_booking_system.dto.response.property.PropertyMapDTO;
 import com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest;
-import com.example.smart_booking_system.repository.AmenityRepository;
 import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.*; // AmenityType, PropertyStatus, PropertyType, RoomCategory
 import com.example.smart_booking_system.exception.ForbiddenException;
@@ -21,13 +19,13 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.MessagingException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.thymeleaf.context.Context;
-
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -54,7 +52,6 @@ public class PropertyServiceImpl implements PropertyService {
     private final RoomAmenityRepository roomAmenityRepository;
     private final RoomRepository roomRepository;
     private final SystemLogService systemLogService;
-
 
     // ============================================================
     // VALIDATION
@@ -87,8 +84,10 @@ public class PropertyServiceImpl implements PropertyService {
         property.setDistrict(request.getDistrict());
         property.setWard(request.getWard());
 
-        if (request.getLatitude() != null) property.setLatitude(BigDecimal.valueOf(request.getLatitude()));
-        if (request.getLongitude() != null) property.setLongitude(BigDecimal.valueOf(request.getLongitude()));
+        if (request.getLatitude() != null)
+            property.setLatitude(BigDecimal.valueOf(request.getLatitude()));
+        if (request.getLongitude() != null)
+            property.setLongitude(BigDecimal.valueOf(request.getLongitude()));
 
         property.setOwner(owner);
         property.setActive(false); // Chờ Admin duyệt hoặc hoàn tất các bước sau
@@ -115,6 +114,7 @@ public class PropertyServiceImpl implements PropertyService {
         // 5. Convert sang DTO để trả về (bạn có thể dùng Mapper hoặc build thủ công)
         return mapToPropertyDetailDTO(savedProperty);
     }
+
     @Override
     public Property addProperty(Property property, String ownerId) {
 
@@ -137,12 +137,12 @@ public class PropertyServiceImpl implements PropertyService {
                 String.valueOf(savedProperty.getPropertyId()),
                 "Tạo cơ sở lưu trú: " + savedProperty.getPropertyName(),
                 null,
-                null
-        );
+                null);
 
         try {
             sendPropertySubmittedEmail(owner, savedProperty);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return savedProperty;
     }
@@ -205,20 +205,18 @@ public class PropertyServiceImpl implements PropertyService {
                 String.valueOf(saved.getPropertyId()),
                 "Cập nhật thông tin cơ sở: " + saved.getPropertyName(),
                 oldValue,
-                SystemLogJsonUtil.propertySnapshot(saved)
-        );
+                SystemLogJsonUtil.propertySnapshot(saved));
 
         return mapToPropertyDetailDTO(saved);
     }
-
 
     // ============================================================
     // 1. SUBMIT APPLICATION
     // ============================================================
     @Override
     public PropertyDetailDTO submitPropertyApplication(PropertyApplicationSubmitDTO dto,
-                                                       List<MultipartFile> images,
-                                                       String ownerId) {
+            List<MultipartFile> images,
+            String ownerId) {
 
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + ownerId));
@@ -300,12 +298,12 @@ public class PropertyServiceImpl implements PropertyService {
                 String.valueOf(saved.getPropertyId()),
                 "Gửi đơn đăng ký cơ sở lưu trú: " + saved.getPropertyName(),
                 null,
-                SystemLogJsonUtil.propertySnapshot(saved)
-        );
+                SystemLogJsonUtil.propertySnapshot(saved));
 
         try {
             sendPropertySubmittedEmail(owner, saved);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // [BỔ SUNG] Gửi thông báo cho TẤT CẢ Admin
         try {
@@ -313,8 +311,7 @@ public class PropertyServiceImpl implements PropertyService {
                     "Cơ sở lưu trú mới chờ duyệt",
                     "Owner " + owner.getFullName() + " vừa đăng tải: " + saved.getPropertyName(),
                     NotificationType.ADMIN_NEW_PROPERTY_SUBMISSION,
-                    String.valueOf(saved.getPropertyId())
-            );
+                    String.valueOf(saved.getPropertyId()));
         } catch (Exception e) {
             System.err.println("Lỗi gửi thông báo Admin: " + e.getMessage());
         }
@@ -351,7 +348,8 @@ public class PropertyServiceImpl implements PropertyService {
             if (images != null && !images.isEmpty()) {
                 // Logic copy hoặc tạo record RoomImage trỏ cùng url với PropertyImage
                 // Để đơn giản, ta tạo record RoomImage mới nhưng dùng chung URL (key) đã upload
-                List<PropertyImage> propImages = propertyImageRepository.findByProperty_PropertyId(saved.getPropertyId());
+                List<PropertyImage> propImages = propertyImageRepository
+                        .findByProperty_PropertyId(saved.getPropertyId());
                 for (PropertyImage pImg : propImages) {
                     RoomImage rImg = new RoomImage();
                     rImg.setRoom(savedRoom);
@@ -361,10 +359,8 @@ public class PropertyServiceImpl implements PropertyService {
             }
         }
 
-
         return mapToPropertyDetailDTO(saved);
     }
-
 
     @Override
     public boolean checkNameAvailability(String propertyName) {
@@ -398,8 +394,7 @@ public class PropertyServiceImpl implements PropertyService {
                     property.getPropertyAmenities().stream()
                             .filter(PropertyAmenity::isActive)
                             .map(PropertyAmenityResponseDTO::new)
-                            .collect(Collectors.toList())
-            );
+                            .collect(Collectors.toList()));
         }
 
         // ROOMS
@@ -407,13 +402,15 @@ public class PropertyServiceImpl implements PropertyService {
 
         if (property.getRooms() != null) {
             for (Room room : property.getRooms()) {
-                if (!room.isActive()) continue;
+                if (!room.isActive())
+                    continue;
 
                 if (checkIn != null && checkOut != null) {
                     boolean booked = !bookingRepository
                             .findConfirmedOverlappingByRoomId(room.getRoomId(), checkIn, checkOut)
                             .isEmpty();
-                    if (booked) continue;
+                    if (booked)
+                        continue;
                 }
 
                 RoomResponseDTO rDto = new RoomResponseDTO(room);
@@ -447,9 +444,9 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     @Transactional(readOnly = true)
     public List<PropertyDetailDTO> searchProperties(String keyword,
-                                                    Integer guests,
-                                                    LocalDate checkIn,
-                                                    LocalDate checkOut) {
+            Integer guests,
+            LocalDate checkIn,
+            LocalDate checkOut) {
 
         if (keyword != null && keyword.trim().isEmpty()) {
             keyword = null;
@@ -488,7 +485,9 @@ public class PropertyServiceImpl implements PropertyService {
     // ============================================================
     @Override
     public List<PropertyDetailDTO> getFeaturedProperties() {
-        return propertyRepository.findFeaturedProperties()
+        // Lấy top 8 khách sạn đạt chuẩn
+        Pageable top8 = PageRequest.of(0, 8);
+        return propertyRepository.findFeaturedProperties(top8)
                 .stream()
                 .map(this::mapToPropertyDetailDTO)
                 .collect(Collectors.toList());
@@ -510,8 +509,8 @@ public class PropertyServiceImpl implements PropertyService {
     // ============================================================
     @Override
     public PropertyDetailDTO reviewProperty(Integer propertyId,
-                                            PropertyReviewDTO reviewDTO,
-                                            String adminUsername) {
+            PropertyReviewDTO reviewDTO,
+            String adminUsername) {
 
         User admin = userRepository.findByEmail(adminUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
@@ -547,8 +546,7 @@ public class PropertyServiceImpl implements PropertyService {
                         ? "Admin duyệt cơ sở lưu trú: " + saved.getPropertyName()
                         : "Admin từ chối cơ sở lưu trú: " + saved.getPropertyName(),
                 oldValue,
-                newStatus.name()
-        );
+                newStatus.name());
 
         // [BỔ SUNG] Gửi thông báo + Email cho Owner
         if (property.getOwner() != null) {
@@ -563,10 +561,10 @@ public class PropertyServiceImpl implements PropertyService {
                     notificationService.sendNotification(
                             owner.getUserId(),
                             "Cơ sở lưu trú được chấp thuận",
-                            "Chúc mừng! Cơ sở '" + saved.getPropertyName() + "' đã được duyệt và đang hoạt động trên hệ thống.",
+                            "Chúc mừng! Cơ sở '" + saved.getPropertyName()
+                                    + "' đã được duyệt và đang hoạt động trên hệ thống.",
                             NotificationType.APPROVAL,
-                            String.valueOf(saved.getPropertyId())
-                    );
+                            String.valueOf(saved.getPropertyId()));
                 } else if (newStatus == PropertyStatus.REJECTED) {
                     notificationService.sendNotification(
                             owner.getUserId(),
@@ -574,8 +572,7 @@ public class PropertyServiceImpl implements PropertyService {
                             "Cơ sở '" + saved.getPropertyName() + "' không đạt yêu cầu. Lý do: " +
                                     (reviewDTO.getReason() != null ? reviewDTO.getReason() : "Không rõ lý do"),
                             NotificationType.REJECTION,
-                            String.valueOf(saved.getPropertyId())
-                    );
+                            String.valueOf(saved.getPropertyId()));
                 }
             } catch (Exception e) {
                 System.err.println("Lỗi gửi thông báo Owner: " + e.getMessage());
@@ -584,7 +581,6 @@ public class PropertyServiceImpl implements PropertyService {
 
         return mapToPropertyDetailDTO(saved);
     }
-
 
     // ============================================================
     // MAPPER: DETAIL DTO (cover + images signed)
@@ -598,8 +594,8 @@ public class PropertyServiceImpl implements PropertyService {
                 .ifPresentOrElse(
                         img -> dto.setCoverImage(fileStorageService.generateSignedUrl(img.getImageUrl())),
                         () -> propertyImageRepository.findFirstByProperty_PropertyId(property.getPropertyId())
-                                .ifPresent(img -> dto.setCoverImage(fileStorageService.generateSignedUrl(img.getImageUrl())))
-                );
+                                .ifPresent(img -> dto
+                                        .setCoverImage(fileStorageService.generateSignedUrl(img.getImageUrl()))));
 
         // list images signed
         List<String> signed = propertyImageRepository.findByProperty_PropertyId(property.getPropertyId())
@@ -684,7 +680,8 @@ public class PropertyServiceImpl implements PropertyService {
     @Transactional(readOnly = true)
     public List<PropertyMapDTO> findNearbyProperties(Double lat, Double lng, Double radius) {
 
-        if (lat == null || lng == null) return new ArrayList<>();
+        if (lat == null || lng == null)
+            return new ArrayList<>();
 
         double range = radius != null ? radius : 10.0;
 
@@ -700,8 +697,8 @@ public class PropertyServiceImpl implements PropertyService {
 
                     BigDecimal minPrice = property.getRooms() != null
                             ? property.getRooms().stream()
-                            .map(Room::getPricePerNight)
-                            .min(BigDecimal::compareTo).orElse(BigDecimal.ZERO)
+                                    .map(Room::getPricePerNight)
+                                    .min(BigDecimal::compareTo).orElse(BigDecimal.ZERO)
                             : BigDecimal.ZERO;
 
                     return new PropertyMapDTO(property, cover, minPrice);
@@ -721,8 +718,7 @@ public class PropertyServiceImpl implements PropertyService {
                 owner.getEmail(),
                 "Xác nhận nộp đơn",
                 "email/property-submitted-confirmation",
-                context
-        );
+                context);
     }
 
     private void sendPropertyReviewEmail(User owner, Property property, String reason) {
@@ -756,8 +752,7 @@ public class PropertyServiceImpl implements PropertyService {
         // 3. Kiểm tra trạng thái duyệt
         if (property.getPropertyStatus() != PropertyStatus.APPROVE) {
             throw new IllegalArgumentException(
-                    "Cơ sở phải được Admin duyệt (APPROVE) mới có thể thay đổi trạng thái hoạt động."
-            );
+                    "Cơ sở phải được Admin duyệt (APPROVE) mới có thể thay đổi trạng thái hoạt động.");
         }
 
         boolean oldStatus = property.isActive();
@@ -779,8 +774,7 @@ public class PropertyServiceImpl implements PropertyService {
                         ? "Chủ sở hữu bật hoạt động cơ sở: " + saved.getPropertyName()
                         : "Chủ sở hữu tắt hoạt động cơ sở: " + saved.getPropertyName(),
                 String.valueOf(oldStatus),
-                String.valueOf(newStatus)
-        );
+                String.valueOf(newStatus));
 
         return newStatus;
     }
@@ -793,8 +787,7 @@ public class PropertyServiceImpl implements PropertyService {
         // 1. Tìm Property
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy cơ sở lưu trú với ID: " + propertyId
-                ));
+                        "Không tìm thấy cơ sở lưu trú với ID: " + propertyId));
 
         String oldStatus = property.getPropertyStatus().name();
 
@@ -816,8 +809,7 @@ public class PropertyServiceImpl implements PropertyService {
                 String.valueOf(saved.getPropertyId()),
                 "Admin tạm dừng cơ sở lưu trú: " + saved.getPropertyName(),
                 oldStatus,
-                PropertyStatus.SUSPENDED.name()
-        );
+                PropertyStatus.SUSPENDED.name());
 
         // 4. Gửi Notification
         notificationService.sendNotification(
@@ -825,18 +817,15 @@ public class PropertyServiceImpl implements PropertyService {
                 "Cơ sở lưu trú bị tạm dừng hoạt động",
                 "Cơ sở '" + saved.getPropertyName() + "' đã bị admin tạm dừng. Lý do: " + reason,
                 NotificationType.PROPERTY_SUSPENDED,
-                String.valueOf(saved.getPropertyId())
-        );
+                String.valueOf(saved.getPropertyId()));
 
         // 5. Gửi Email
         emailService.sendPropertySuspensionEmail(
                 owner.getEmail(),
                 owner.getFullName(),
                 saved.getPropertyName(),
-                reason
-        );
+                reason);
     }
-
 
     // ============================================================
     // [NEW] GET ALL ACTIVE PROPERTIES (ADMIN)
@@ -847,6 +836,7 @@ public class PropertyServiceImpl implements PropertyService {
         return propertyRepository.findByPropertyStatus(PropertyStatus.APPROVE, pageable)
                 .map(this::mapToPropertyResponseDTO);
     }
+
     @Override
     public void activateProperty(Integer propertyId) {
         Property property = propertyRepository.findById(propertyId)
@@ -871,8 +861,7 @@ public class PropertyServiceImpl implements PropertyService {
                 String.valueOf(saved.getPropertyId()),
                 "Admin kích hoạt lại cơ sở lưu trú: " + saved.getPropertyName(),
                 oldStatus,
-                PropertyStatus.APPROVE.name()
-        );
+                PropertyStatus.APPROVE.name());
 
         // Gửi thông báo
         notificationService.sendNotification(
@@ -880,15 +869,13 @@ public class PropertyServiceImpl implements PropertyService {
                 "Cơ sở hoạt động trở lại",
                 "Cơ sở " + saved.getPropertyName() + " đã được mở lại.",
                 NotificationType.SYSTEM,
-                String.valueOf(saved.getPropertyId())
-        );
+                String.valueOf(saved.getPropertyId()));
 
         // Gửi mail
         emailService.sendPropertyReactivationEmail(
                 owner.getEmail(),
                 owner.getFullName(),
-                saved.getPropertyName()
-        );
+                saved.getPropertyName());
     }
 
     @Override
@@ -913,8 +900,7 @@ public class PropertyServiceImpl implements PropertyService {
 
         List<BookingStatus> bookingStatuses = Arrays.asList(
                 BookingStatus.CONFIRMED,
-                BookingStatus.PENDING_PAYMENT
-        );
+                BookingStatus.PENDING_PAYMENT);
 
         // 1. Gọi Repository (Truyền isManager xuống SQL)
         Page<Property> propertyPage = propertyRepository.searchPropertiesAdvanced(
@@ -929,8 +915,7 @@ public class PropertyServiceImpl implements PropertyService {
                 maxPrice,
                 bookingStatuses,
                 isManager, // <--- Truyền vào đây
-                pageable
-        );
+                pageable);
 
         // 2. Map & Filter Rooms (Logic hiển thị)
         return propertyPage.map(property -> {
@@ -940,24 +925,31 @@ public class PropertyServiceImpl implements PropertyService {
                 List<RoomResponseDTO> filteredRooms = dto.getRooms().stream()
                         .filter(room -> {
                             // [QUAN TRỌNG] Nếu là Manager thì HIỂN THỊ HẾT (kể cả active=false)
-                            if (isManager) return true;
+                            if (isManager)
+                                return true;
 
                             // --- Logic cho Khách (Customer) ---
 
                             // Phải là phòng đang active
                             // Note: DTO của bạn cần có field isActive, hoặc check logic khác.
-                            // Nếu RoomResponseDTO chưa có isActive, tạm thời bỏ qua dòng này hoặc bổ sung vào DTO.
+                            // Nếu RoomResponseDTO chưa có isActive, tạm thời bỏ qua dòng này hoặc bổ sung
+                            // vào DTO.
                             // if (!room.isActive()) return false;
 
                             // Check giá & sức chứa
-                            if (minPrice != null && room.getPricePerNight().compareTo(minPrice) < 0) return false;
-                            if (maxPrice != null && room.getPricePerNight().compareTo(maxPrice) > 0) return false;
-                            if (guests != null && room.getCapacity() < guests) return false;
+                            if (minPrice != null && room.getPricePerNight().compareTo(minPrice) < 0)
+                                return false;
+                            if (maxPrice != null && room.getPricePerNight().compareTo(maxPrice) > 0)
+                                return false;
+                            if (guests != null && room.getCapacity() < guests)
+                                return false;
 
                             // Check trùng lịch
                             if (checkIn != null && checkOut != null) {
-                                Long bookedCount = bookingRepository.countExistingBookings(room.getRoomId(), checkIn, checkOut);
-                                if (bookedCount > 0) return false;
+                                Long bookedCount = bookingRepository.countExistingBookings(room.getRoomId(), checkIn,
+                                        checkOut);
+                                if (bookedCount > 0)
+                                    return false;
                             }
 
                             return true;
@@ -978,7 +970,8 @@ public class PropertyServiceImpl implements PropertyService {
                             .max(BigDecimal::compareTo)
                             .orElse(BigDecimal.ZERO));
                 } else {
-                    // Nếu sau khi lọc không còn phòng nào (trường hợp hiếm do SQL đã lọc rồi, nhưng vẫn có thể xảy ra do logic fetch Eager)
+                    // Nếu sau khi lọc không còn phòng nào (trường hợp hiếm do SQL đã lọc rồi, nhưng
+                    // vẫn có thể xảy ra do logic fetch Eager)
                     // Ta có thể để giá = 0 hoặc null
                     dto.setMinPrice(BigDecimal.ZERO);
                     dto.setMaxPrice(BigDecimal.ZERO);
