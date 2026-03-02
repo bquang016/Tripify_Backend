@@ -113,8 +113,14 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             property.setBusinessLicenseImage(data.getBusinessLicenseImage());
             property.setPropertyStatus(PropertyStatus.APPROVE);
             property.setActive(true); // Activate the property immediately
-            Property savedProperty = propertyRepository.save(property);
+            PropertyDetail propertyDetail = new PropertyDetail();
+            propertyDetail.setProperty(property);
+            if (propertyInfo.getArea() != null) {
+                propertyDetail.setArea(java.math.BigDecimal.valueOf(propertyInfo.getArea()));
+            }
+            property.setPropertyDetail(propertyDetail);
 
+            Property savedProperty = propertyRepository.save(property);
             // Property Images
             if (data.getPropertyImageUrls() != null && !data.getPropertyImageUrls().isEmpty()) {
                 List<String> imageUrls = data.getPropertyImageUrls();
@@ -171,7 +177,9 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 unit.setPricePerNight(propertyInfo.getPrice());
                 unit.setWeekendPrice(propertyInfo.getWeekendPrice());
                 unit.setCapacity(propertyInfo.getCapacity());
-                unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getArea()));
+                if (propertyInfo.getUnitData() != null && propertyInfo.getUnitData().   getArea() != null) {
+                    unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getUnitData().getArea()));
+                }
                 unit.setRoomStatus(RoomStatus.AVAILABLE);
                 unit.setRoomAmount(1);
                 Room savedUnit = roomRepository.save(unit);

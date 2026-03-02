@@ -29,7 +29,7 @@ public class OnboardingPropertyInfoRequest {
     private BigDecimal price;
     private BigDecimal weekendPrice;
     private Integer capacity;
-    private Integer area;
+    private Double area;
     private OnboardingUnitDataRequest unitData; // nested object for unit details
 
     // --- Policies ---

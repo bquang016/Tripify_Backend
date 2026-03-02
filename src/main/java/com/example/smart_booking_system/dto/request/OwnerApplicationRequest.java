@@ -62,6 +62,7 @@ public class OwnerApplicationRequest {
     public static class UnitData {
         private String name;
         private String description;
+        private Double area;
         // Simplified for storage, can be expanded later
         private List<String> amenityIds;
     }
