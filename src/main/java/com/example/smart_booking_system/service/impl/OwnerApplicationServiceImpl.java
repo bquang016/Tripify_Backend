@@ -116,13 +116,24 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             Property savedProperty = propertyRepository.save(property);
 
             // Property Images
-            if (data.getPropertyImageUrls() != null) {
-                List<PropertyImage> propertyImageList = data.getPropertyImageUrls().stream().map(url -> {
+            if (data.getPropertyImageUrls() != null && !data.getPropertyImageUrls().isEmpty()) {
+                List<String> imageUrls = data.getPropertyImageUrls();
+                List<PropertyImage> propertyImageList = new ArrayList<>();
+
+                for (int i = 0; i < imageUrls.size(); i++) {
                     PropertyImage img = new PropertyImage();
                     img.setProperty(savedProperty);
-                    img.setImageUrl(url);
-                    return img;
-                }).collect(Collectors.toList());
+                    img.setImageUrl(imageUrls.get(i));
+
+                    // Gắn cờ isCover = true cho ảnh đầu tiên (index = 0)
+                    if (i == 0) {
+                        img.setCover(true);
+                    } else {
+                        img.setCover(false);
+                    }
+
+                    propertyImageList.add(img);
+                }
                 propertyImageRepository.saveAll(propertyImageList);
             }
 
