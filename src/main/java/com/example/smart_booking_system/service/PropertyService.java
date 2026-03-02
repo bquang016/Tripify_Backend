@@ -31,8 +31,8 @@ public interface PropertyService {
     PropertyDetailDTO getPropertyDetailById(Integer id, LocalDate checkIn, LocalDate checkOut);
 
     PropertyDetailDTO submitPropertyApplication(PropertyApplicationSubmitDTO dto,
-                                                List<MultipartFile> images,
-                                                String ownerId);
+            List<MultipartFile> images,
+            String ownerId);
 
     List<PropertyDetailDTO> getOwnerProperties(String ownerId);
 
@@ -41,15 +41,16 @@ public interface PropertyService {
     List<PropertyMapDTO> findNearbyProperties(Double lat, Double lng, Double radius);
 
     List<PropertyDetailDTO> searchProperties(String keyword,
-                                             Integer guests,
-                                             LocalDate checkIn,
-                                             LocalDate checkOut);
+            Integer guests,
+            LocalDate checkIn,
+            LocalDate checkOut);
 
     boolean checkNameAvailability(String propertyName);
 
     boolean togglePropertyStatus(Integer propertyId, String ownerId);
 
-    // THÊM MỚI: Method lấy danh sách Property đang hoạt động cho Admin (có phân trang)
+    // THÊM MỚI: Method lấy danh sách Property đang hoạt động cho Admin (có phân
+    // trang)
     Page<PropertyResponseDTO> getAllActiveProperties(Pageable pageable);
 
     // THÊM MỚI: Method dừng hoạt động Property
@@ -58,22 +59,24 @@ public interface PropertyService {
     // [NEW] Mở lại hoạt động khách sạn (Re-activate)
     void activateProperty(Integer propertyId);
 
-    // [NEW] Lấy danh sách Property theo trạng thái có phân trang (Dùng cho Admin Filter)
+    // [NEW] Lấy danh sách Property theo trạng thái có phân trang (Dùng cho Admin
+    // Filter)
     // Hàm này hỗ trợ API /list mà chúng ta vừa tạo ở Controller
     Page<PropertyResponseDTO> getPropertiesByStatusPaginated(PropertyStatus status, Pageable pageable);
 
     Page<PropertyDetailDTO> searchPropertiesPaginated(
             String keyword,
-            List<String> cities,    // ✅ Mới
-            List<Integer> ratings,  // ✅ Mới
+            List<String> cities, // ✅ Mới
+            List<Integer> ratings, // ✅ Mới
             Integer guests,
             LocalDate checkIn,
             LocalDate checkOut,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             boolean isManager,
-            Pageable pageable
-    );
-    PropertyDetailDTO registerProperty(com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest request, String ownerId);
+            Pageable pageable);
+
+    PropertyDetailDTO registerProperty(
+            com.example.smart_booking_system.dto.request.property.PropertyRegistrationRequest request, String ownerId);
 
 }
