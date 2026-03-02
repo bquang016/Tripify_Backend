@@ -158,6 +158,18 @@ public class SystemSettingService {
         );
     }
 
+    public String getDefaultLanguage() {
+        return systemSettingRepository.findById(1L)
+                .map(SystemSetting::getDefaultLanguage)
+                .orElse("vi");
+    }
+
+    public String getDefaultCurrency() {
+        return systemSettingRepository.findById(1L)
+                .map(SystemSetting::getDefaultCurrency)
+                .orElse("VND");
+    }
+
     private SystemSettingResponseDTO toResponseDTO(SystemSetting settings) {
         return new SystemSettingResponseDTO(
                 settings.getAppName(),

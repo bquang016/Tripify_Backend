@@ -1,6 +1,8 @@
 package com.example.smart_booking_system.service.impl;
 
+import com.example.smart_booking_system.service.CurrencyService;
 import com.example.smart_booking_system.service.EmailService;
+import com.example.smart_booking_system.util.I18nUtil;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
+    private final CurrencyService currencyService;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -44,7 +47,7 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendResetPasswordEmail(String toEmail, String fullName, String resetToken) {
         try {
-            String subject = "Đặt lại mật khẩu - Smart Booking";
+            String subject = I18nUtil.getMessage("email.subject.reset_password");
 
             String encodedToken = URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
             String resetPasswordUrl = getFrontendBaseUrl() + "reset-password?token=" + encodedToken;
@@ -68,7 +71,7 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendBookingConfirmationEmail(String toEmail, String fullName, String bookingId) {
         try {
-            String subject = "Xác nhận đặt chỗ - Smart Booking";
+            String subject = I18nUtil.getMessage("email.subject.booking_confirmation");
 
             Context context = new Context();
             context.setVariable("username", fullName);

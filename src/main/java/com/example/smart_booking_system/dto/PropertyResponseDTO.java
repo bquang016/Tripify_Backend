@@ -40,5 +40,8 @@ public class PropertyResponseDTO {
     private LocalDate updatedAt;
     private String coverImage;
     private String ownerName;
+    private String currency;
+    private BigDecimal minPrice;
+    private BigDecimal convertedMinPrice;
     private List<String> images;
 }
