@@ -47,10 +47,7 @@ public class OwnerApplicationRequest {
         private String businessLicenseNumber;
 
         // Fields specific to VILLA/HOMESTAY
-        private BigDecimal price;
-        private BigDecimal weekendPrice;
-        private Integer capacity;
-        private Double area;
+        private Double area; // Vẫn giữ lại area
         private UnitData unitData;
 
         private PolicyData policies;
@@ -62,6 +59,13 @@ public class OwnerApplicationRequest {
     public static class UnitData {
         private String name;
         private String description;
+        private Double area;
+
+        // Đã chuyển xuống UnitData
+        private BigDecimal price;
+        private BigDecimal weekendPrice;
+        private Integer capacity;
+
         // Simplified for storage, can be expanded later
         private List<String> amenityIds;
     }

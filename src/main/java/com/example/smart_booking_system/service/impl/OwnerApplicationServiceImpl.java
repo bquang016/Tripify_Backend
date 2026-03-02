@@ -95,7 +95,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             userDetail.setCccdFrontUrl(data.getCccdFrontUrl());
             userDetail.setCccdBackUrl(data.getCccdBackUrl());
             userDetailRepository.save(userDetail);
-            
+
             // 4. Create and save Property and related entities
             OwnerApplicationRequest.PropertyInfo propertyInfo = data.getPropertyInfo();
             Property property = new Property();
@@ -113,8 +113,16 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             property.setBusinessLicenseImage(data.getBusinessLicenseImage());
             property.setPropertyStatus(PropertyStatus.APPROVE);
             property.setActive(true); // Activate the property immediately
-            Property savedProperty = propertyRepository.save(property);
+            PropertyDetail propertyDetail = new PropertyDetail();
+            propertyDetail.setProperty(property);
 
+            // Vẫn giữ area cho Property
+            if (propertyInfo.getArea() != null) {
+                propertyDetail.setArea(java.math.BigDecimal.valueOf(propertyInfo.getArea()));
+            }
+            property.setPropertyDetail(propertyDetail);
+
+            Property savedProperty = propertyRepository.save(property);
             // Property Images
             if (data.getPropertyImageUrls() != null && !data.getPropertyImageUrls().isEmpty()) {
                 List<String> imageUrls = data.getPropertyImageUrls();
@@ -149,7 +157,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 policies.setFreeCancellationDays(policyData.getFreeCancellationDays());
                 propertyPoliciesRepository.save(policies);
             }
-            
+
             // Property Amenities
             if (propertyInfo.getAmenityIds() != null && !propertyInfo.getAmenityIds().isEmpty()) {
                 List<Amenity> amenities = amenityRepository.findAllById(propertyInfo.getAmenityIds().stream().map(Integer::parseInt).collect(Collectors.toList()));
@@ -164,14 +172,24 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
 
             // Rooms/Units for VILLA/HOMESTAY
             if (propertyInfo.getPropertyType() == com.example.smart_booking_system.enums.PropertyType.VILLA ||
-                propertyInfo.getPropertyType() == com.example.smart_booking_system.enums.PropertyType.HOMESTAY) {
+                    propertyInfo.getPropertyType() == com.example.smart_booking_system.enums.PropertyType.HOMESTAY) {
                 Room unit = new Room();
                 unit.setProperty(savedProperty);
-                unit.setRoomName(propertyInfo.getUnitData() != null ? propertyInfo.getUnitData().getName() : "Căn " + savedProperty.getPropertyName());
-                unit.setPricePerNight(propertyInfo.getPrice());
-                unit.setWeekendPrice(propertyInfo.getWeekendPrice());
-                unit.setCapacity(propertyInfo.getCapacity());
-                unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getArea()));
+
+                // --- ĐÃ SỬA: Lấy dữ liệu từ UnitData ---
+                if (propertyInfo.getUnitData() != null) {
+                    unit.setRoomName(propertyInfo.getUnitData().getName() != null ? propertyInfo.getUnitData().getName() : "Căn " + savedProperty.getPropertyName());
+                    unit.setPricePerNight(propertyInfo.getUnitData().getPrice());
+                    unit.setWeekendPrice(propertyInfo.getUnitData().getWeekendPrice());
+                    unit.setCapacity(propertyInfo.getUnitData().getCapacity());
+                    if (propertyInfo.getUnitData().getArea() != null) {
+                        unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getUnitData().getArea()));
+                    }
+                } else {
+                    unit.setRoomName("Căn " + savedProperty.getPropertyName());
+                }
+                // --- KẾT THÚC SỬA ---
+
                 unit.setRoomStatus(RoomStatus.AVAILABLE);
                 unit.setRoomAmount(1);
                 Room savedUnit = roomRepository.save(unit);
@@ -198,7 +216,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 paymentDetail.setAccountNumber(paymentInfo.getAccountNumber());
                 paymentDetailRepository.save(paymentDetail);
             }
-            
+
             // 6. Update Application Status
             application.setStatus(ApplicationStatus.APPROVED);
             application.setReviewedBy(adminUsername);
@@ -295,7 +313,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
             }
 
             // --- MAPPING THÔNG TIN CÁ NHÂN (QUAN TRỌNG) ---
-            if (data != null) { // Kiểm tra data null thêm 1 lần nữa cho chắc chắn
+            if (data != null) {
                 dto.setApplicantFullName(data.getFullName());
                 dto.setApplicantPhoneNumber(data.getPhoneNumber());
                 dto.setApplicantAvatar(data.getAvatarUrl());
@@ -335,9 +353,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                     propDTO.setLongitude(prop.getLongitude());
                     propDTO.setBusinessLicenseNumber(prop.getBusinessLicenseNumber());
 
-                    propDTO.setPrice(prop.getPrice() != null ? prop.getPrice().doubleValue() : 0.0);
-                    propDTO.setWeekendPrice(prop.getWeekendPrice() != null ? prop.getWeekendPrice().doubleValue() : 0.0);
-                    propDTO.setCapacity(prop.getCapacity());
+                    // Vẫn map area của Property
                     propDTO.setArea(prop.getArea() != null ? prop.getArea() : 0.0);
 
                     propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
@@ -369,6 +385,26 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                         polDTO.setFreeCancellationDays(prop.getPolicies().getFreeCancellationDays());
                         propDTO.setPolicies(polDTO);
                     }
+
+                    // --- ĐÃ SỬA: Map UnitData và các thuộc tính của phòng/căn ---
+                    if (prop.getUnitData() != null) {
+                        OwnerApplicationDTO.UnitDataDTO unitDTO = new OwnerApplicationDTO.UnitDataDTO();
+                        unitDTO.setName(prop.getUnitData().getName());
+                        unitDTO.setDescription(prop.getUnitData().getDescription());
+                        unitDTO.setArea(prop.getUnitData().getArea());
+
+                        // Map 3 trường mới thêm vào UnitData
+                        unitDTO.setPrice(prop.getUnitData().getPrice() != null ? prop.getUnitData().getPrice().doubleValue() : 0.0);
+                        unitDTO.setWeekendPrice(prop.getUnitData().getWeekendPrice() != null ? prop.getUnitData().getWeekendPrice().doubleValue() : 0.0);
+                        unitDTO.setCapacity(prop.getUnitData().getCapacity() != null ? prop.getUnitData().getCapacity() : 0);
+
+                        // Nếu cần map cả Amenities của Unit thì làm tương tự Property Amenities
+                        unitDTO.setAmenityNames(prop.getUnitData().getAmenityIds());
+                        propDTO.setUnitData(unitDTO);
+                    }
+
+                    propDTO.setUnitImageUrls(data.getUnitImageUrls());
+
                     dto.setPropertyInfo(propDTO);
                 }
 
