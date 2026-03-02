@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 // Corresponds to the property-related fields in the JSON
@@ -26,10 +25,7 @@ public class OnboardingPropertyInfoRequest {
     private String businessLicenseNumber;
 
     // --- Conditional data for Villa/Homestay ---
-    private BigDecimal price;
-    private BigDecimal weekendPrice;
-    private Integer capacity;
-    private Double area;
+    private Double area; // Vẫn giữ lại area ở Property
     private OnboardingUnitDataRequest unitData; // nested object for unit details
 
     // --- Policies ---

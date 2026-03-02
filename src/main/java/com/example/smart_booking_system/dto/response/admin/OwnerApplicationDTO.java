@@ -22,11 +22,9 @@ public class OwnerApplicationDTO {
     private LocalDateTime reviewedAt;
     private String adminReason;
 
-
     private String applicantId;
     private String applicantFullName;
     private String applicantEmail;
-
 
     private String applicantPhoneNumber;
     private String applicantAvatar;
@@ -52,10 +50,12 @@ public class OwnerApplicationDTO {
         private double latitude;
         private double longitude;
         private String businessLicenseNumber;
-        private double price;
-        private double weekendPrice;
-        private int capacity;
+
+        // Vẫn giữ lại area ở Property
         private double area;
+
+        // Đã xóa price, weekendPrice, capacity ở đây
+
         private java.util.List<String> propertyImageUrls;
         private java.util.List<String> amenityNames;
         private PoliciesDTO policies;
@@ -79,11 +79,18 @@ public class OwnerApplicationDTO {
         private String accountHolderName;
         private String accountNumber;
     }
+
     @Data
     public static class UnitDataDTO {
         private String name;
         private String description;
         private Double area;
+
+        // Đã chuyển các trường của phòng/căn xuống đây
+        private Double price;
+        private Double weekendPrice;
+        private Integer capacity;
+
         private java.util.List<String> amenityNames;
     }
 }
