@@ -59,6 +59,8 @@ public class OwnerApplicationDTO {
         private java.util.List<String> propertyImageUrls;
         private java.util.List<String> amenityNames;
         private PoliciesDTO policies;
+        private UnitDataDTO unitData;
+        private java.util.List<String> unitImageUrls;
     }
 
     @Data
@@ -76,5 +78,12 @@ public class OwnerApplicationDTO {
         private String bankName;
         private String accountHolderName;
         private String accountNumber;
+    }
+    @Data
+    public static class UnitDataDTO {
+        private String name;
+        private String description;
+        private Double area;
+        private java.util.List<String> amenityNames;
     }
 }
