@@ -27,6 +27,10 @@ public class RoomResponseDTO {
     private RoomStatus roomStatus;
     private boolean active;
 
+    private String currency;
+    private BigDecimal convertedPricePerNight;
+    private BigDecimal convertedWeekendPrice;
+
     private List<String> images;
     private List<String> amenities;
 

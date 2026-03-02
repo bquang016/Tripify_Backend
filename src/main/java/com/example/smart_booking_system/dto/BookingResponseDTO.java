@@ -42,6 +42,13 @@ public class BookingResponseDTO {
     private String paymentMethod;
     private String specialRequest;
     private LocalDateTime createdAt;
+
+    private String currency;
+    private BigDecimal convertedTotalPrice;
+    private BigDecimal convertedDiscountAmount;
+    private BigDecimal convertedPenaltyAmount;
+    private BigDecimal convertedRefundAmount;
+
     private UserSummaryDto user;
     private boolean isReviewed;
 

@@ -52,6 +52,7 @@ public class PropertyServiceImpl implements PropertyService {
     private final RoomAmenityRepository roomAmenityRepository;
     private final RoomRepository roomRepository;
     private final SystemLogService systemLogService;
+    private final CurrencyService currencyService;
 
     // ============================================================
     // VALIDATION
@@ -651,6 +652,18 @@ public class PropertyServiceImpl implements PropertyService {
 
         if (property.getOwner() != null) {
             dto.setOwnerName(property.getOwner().getFullName());
+        }
+
+        // Min Price Calculation and Conversion
+        dto.setCurrency(currencyService.getCurrentCurrencySymbol());
+        if (property.getRooms() != null && !property.getRooms().isEmpty()) {
+            BigDecimal min = property.getRooms().stream()
+                    .filter(Room::isActive)
+                    .map(Room::getPricePerNight)
+                    .min(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
+            dto.setMinPrice(min);
+            dto.setConvertedMinPrice(currencyService.convertFromVND(min));
         }
 
         // Signed cover

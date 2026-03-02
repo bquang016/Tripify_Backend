@@ -1,12 +1,8 @@
 package com.example.smart_booking_system.config;
 
-import com.example.smart_booking_system.entity.Amenity;
-import com.example.smart_booking_system.entity.Role;
-import com.example.smart_booking_system.entity.User;
+import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.AmenityType;
-import com.example.smart_booking_system.repository.AmenityRepository;
-import com.example.smart_booking_system.repository.RoleRepository;
-import com.example.smart_booking_system.repository.UserRepository;
+import com.example.smart_booking_system.repository.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +21,9 @@ public class DataInitializer {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AmenityRepository amenityRepository; // THÊM MỚI: Inject Repository
-    private final com.example.smart_booking_system.repository.PermissionRepository permissionRepository;
+    private final PermissionRepository permissionRepository;
+    private final SystemSettingRepository systemSettingRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     @PostConstruct
     public void init() {
@@ -40,6 +38,34 @@ public class DataInitializer {
 
         // 4. Khởi tạo Amenities (THÊM MỚI)
         initAmenities();
+
+        // 5. Khởi tạo System Settings (THÊM MỚI)
+        initSystemSettings();
+    }
+
+    private void initSystemSettings() {
+        if (!systemSettingRepository.existsById(1L)) {
+            SystemSetting settings = new SystemSetting();
+            settings.setId(1L);
+            settings.setAppName("Tripify");
+            settings.setDefaultLanguage("vi");
+            settings.setDefaultCurrency("VND");
+            systemSettingRepository.save(settings);
+            System.out.println("✅ Initialized default System Settings");
+        }
+
+        if (exchangeRateRepository.count() == 0) {
+            ExchangeRate usd = new ExchangeRate();
+            usd.setPair("USD_VND");
+            usd.setRate(25450.0);
+            exchangeRateRepository.save(usd);
+
+            ExchangeRate eur = new ExchangeRate();
+            eur.setPair("EUR_VND");
+            eur.setRate(27120.0);
+            exchangeRateRepository.save(eur);
+            System.out.println("✅ Initialized default Exchange Rates");
+        }
     }
 
     private void initPermissions() {
@@ -65,6 +91,7 @@ public class DataInitializer {
 
             // Group: System
             createPermissionIfNotExist("SYSTEM_LOG_VIEW", "Xem log hệ thống", "Hệ thống");
+            createPermissionIfNotExist("SYSTEM_MANAGE", "Quản lý cấu hình hệ thống", "Hệ thống");
             createPermissionIfNotExist("REPORTS_VIEW", "Xem báo cáo doanh thu", "Hệ thống");
             createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Hệ thống");
         } catch (Exception e) {
@@ -86,7 +113,7 @@ public class DataInitializer {
         }
 
         if (!exists) {
-            com.example.smart_booking_system.entity.Permission p = new com.example.smart_booking_system.entity.Permission();
+            Permission p = new Permission();
             p.setCode(code);
             p.setName(name);
             p.setGroupName(groupName);
@@ -112,7 +139,7 @@ public class DataInitializer {
                 });
         
         // Super Admin luôn được cập nhật full quyền để đảm bảo không bị lock-out
-        Set<com.example.smart_booking_system.entity.Permission> allPerms = new java.util.HashSet<>(permissionRepository.findAll());
+        Set<Permission> allPerms = new java.util.HashSet<>(permissionRepository.findAll());
         if (superAdmin.getPermissions().size() != allPerms.size()) {
             superAdmin.setPermissions(allPerms);
             roleRepository.save(superAdmin);
@@ -129,7 +156,7 @@ public class DataInitializer {
                     role.setCreatedAt(LocalDateTime.now());
                     
                     // Chỉ gán quyền mặc định khi TẠO MỚI lần đầu
-                    Set<com.example.smart_booking_system.entity.Permission> adminPerms = permissionRepository.findAll().stream()
+                    Set<Permission> adminPerms = permissionRepository.findAll().stream()
                             .filter(p -> !p.getCode().equals("SYSTEM_LOG_VIEW"))
                             .collect(java.util.stream.Collectors.toSet());
                     role.setPermissions(adminPerms);

@@ -35,6 +35,7 @@ public class RoomServiceImpl implements RoomService {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final SystemLogService systemLogService;
+    private final CurrencyService currencyService;
 
     @Override
     public boolean checkRoomNameExists(int propertyId, String roomName, int excludeRoomId) {
@@ -344,6 +345,11 @@ public void activateRoom(Integer roomId) {
 private RoomResponseDTO mapToRoomDTO(Room room) {
     // Dùng constructor đã fix (area, active, weekendPrice, ...)
     RoomResponseDTO dto = new RoomResponseDTO(room);
+
+    // Set currency and converted prices
+    dto.setCurrency(currencyService.getCurrentCurrencySymbol());
+    dto.setConvertedPricePerNight(currencyService.convertFromVND(room.getPricePerNight()));
+    dto.setConvertedWeekendPrice(currencyService.convertFromVND(room.getWeekendPrice()));
 
     // Images (Signed URL)
     List<String> imageUrls = roomImageRepository.findByRoom_RoomId(room.getRoomId())
