@@ -7,7 +7,7 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "ratingImages")
+@Table(name = "rating_images")
 public class RatingImage {
 
     @Id
@@ -15,7 +15,7 @@ public class RatingImage {
     private int imageId;
 
     @ManyToOne
-    @JoinColumn(name = "ratingId")
+    @JoinColumn(name = "rating_id")
     private Rating rating;
 
     private String imageUrl;

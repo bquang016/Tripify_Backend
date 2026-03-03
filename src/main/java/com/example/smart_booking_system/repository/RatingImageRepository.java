@@ -8,9 +8,9 @@ import java.util.List;
 
 public interface RatingImageRepository extends JpaRepository<RatingImage, Integer> {
     @Query(
-            value = "SELECT * FROM ratingImages WHERE ratingId = :ratingId",
+            // Sửa ratingImages thành rating_images và ratingId thành rating_id
+            value = "SELECT * FROM rating_images WHERE rating_id = :ratingId",
             nativeQuery = true
     )
     List<RatingImage> getImagesByRatingId(int ratingId);
-
 }

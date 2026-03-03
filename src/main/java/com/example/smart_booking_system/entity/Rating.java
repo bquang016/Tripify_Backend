@@ -20,11 +20,11 @@ public class    Rating {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int ratingId;
 
-    @JoinColumn(name = "users")
+    @JoinColumn(name = "users_id")
     @ManyToOne
     private User userId;
 
-    @JoinColumn(name = "bookings")
+    @JoinColumn(name = "booking_id")
     @ManyToOne
     private Booking bookingId;
 
