@@ -10,6 +10,7 @@ import com.example.smart_booking_system.repository.BookingRepository;
 import com.example.smart_booking_system.repository.PropertyRepository;
 import com.example.smart_booking_system.repository.UserRepository;
 import com.example.smart_booking_system.service.OwnerApplicationService;
+import com.example.smart_booking_system.security.CheckPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest; // ✅ Import thêm
@@ -30,6 +31,7 @@ import java.util.Map;     // ✅ Import thêm
 @RequestMapping("/api/v1/admin/owner-applications")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+@CheckPermission("APPLICATION_MANAGE")
 public class AdminApplicationController {
 
     private final OwnerApplicationService ownerApplicationService;
