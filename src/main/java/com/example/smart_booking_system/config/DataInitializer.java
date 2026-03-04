@@ -84,6 +84,7 @@ public class DataInitializer {
             createPermissionIfNotExist("PROPERTY_VIEW", "Xem danh sách cơ sở lưu trú", "Quản lý khách sạn");
             createPermissionIfNotExist("PROPERTY_APPROVE", "Phê duyệt cơ sở lưu trú", "Quản lý khách sạn");
             createPermissionIfNotExist("PROPERTY_MANAGE", "Quản lý cơ sở lưu trú", "Quản lý khách sạn");
+            createPermissionIfNotExist("APPLICATION_MANAGE", "Quản lý đơn đăng ký đối tác", "Quản lý khách sạn");
 
             // Group: Booking Management
             createPermissionIfNotExist("BOOKING_VIEW", "Xem danh sách đặt phòng", "Quản lý đặt phòng");
