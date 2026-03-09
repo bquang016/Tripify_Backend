@@ -44,7 +44,6 @@ public class PropertyAmenityController {
     // READ ALL FOR PROPERTY
     // -------------------------------------------------------------------
     @GetMapping("/property/{propertyId}")
-    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<?> getByProperty(@PathVariable int propertyId) {
         try {
             return ResponseEntity.ok(propertyAmenityService.getByPropertyId(propertyId));
