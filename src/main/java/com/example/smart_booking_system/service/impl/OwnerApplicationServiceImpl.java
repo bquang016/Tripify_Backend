@@ -14,6 +14,8 @@ import com.example.smart_booking_system.repository.*;
 import com.example.smart_booking_system.service.EmailService;
 import com.example.smart_booking_system.service.FileStorageService;
 import com.example.smart_booking_system.service.OwnerApplicationService;
+import com.example.smart_booking_system.enums.RoomCategory;
+import com.example.smart_booking_system.repository.RoomAmenityRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,6 +45,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
     private final PropertyImageRepository propertyImageRepository;
     private final AmenityRepository amenityRepository;
     private final PropertyAmenityRepository propertyAmenityRepository;
+    private final RoomAmenityRepository roomAmenityRepository;
     private final RoomRepository roomRepository;
     private final RoomImageRepository roomImageRepository;
     private final PaymentDetailRepository paymentDetailRepository;
@@ -165,6 +168,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                     PropertyAmenity pa = new PropertyAmenity();
                     pa.setProperty(savedProperty);
                     pa.setAmenity(amenity);
+                    pa.setActive(true);
                     return pa;
                 }).collect(Collectors.toList());
                 propertyAmenityRepository.saveAll(propertyAmenities);
@@ -176,24 +180,49 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 Room unit = new Room();
                 unit.setProperty(savedProperty);
 
-                // --- ĐÃ SỬA: Lấy dữ liệu từ UnitData ---
                 if (propertyInfo.getUnitData() != null) {
                     unit.setRoomName(propertyInfo.getUnitData().getName() != null ? propertyInfo.getUnitData().getName() : "Căn " + savedProperty.getPropertyName());
                     unit.setPricePerNight(propertyInfo.getUnitData().getPrice());
                     unit.setWeekendPrice(propertyInfo.getUnitData().getWeekendPrice());
                     unit.setCapacity(propertyInfo.getUnitData().getCapacity());
+
+                    // BỔ SUNG: Thiếu Description và Category
+                    unit.setDescription(propertyInfo.getUnitData().getDescription());
+                    unit.setRoomCategory(RoomCategory.WHOLE); // Hoặc enum phù hợp
+
                     if (propertyInfo.getUnitData().getArea() != null) {
                         unit.setArea(java.math.BigDecimal.valueOf(propertyInfo.getUnitData().getArea()));
                     }
                 } else {
                     unit.setRoomName("Căn " + savedProperty.getPropertyName());
                 }
-                // --- KẾT THÚC SỬA ---
 
                 unit.setRoomStatus(RoomStatus.AVAILABLE);
                 unit.setRoomAmount(1);
+                unit.setActive(true);
                 Room savedUnit = roomRepository.save(unit);
 
+                // BỔ SUNG: Lưu Room Amenities (Đã fix lỗi String ID)
+                if (propertyInfo.getUnitData() != null && propertyInfo.getUnitData().getAmenityIds() != null && !propertyInfo.getUnitData().getAmenityIds().isEmpty()) {
+                    List<RoomAmenity> roomAmenities = new ArrayList<>();
+
+                    for (String frontendId : propertyInfo.getUnitData().getAmenityIds()) {
+                        amenityRepository.findByAmenityNameAndAmenityType(frontendId, com.example.smart_booking_system.enums.AmenityType.ROOM)
+                                .ifPresent(amenity -> {
+                                    RoomAmenity ra = new RoomAmenity();
+                                    ra.setRoom(savedUnit); // (Trong OwnerApplicationServiceImpl dùng savedUnit, RoomServiceImpl dùng savedRoom)
+                                    ra.setAmenity(amenity);
+                                    ra.setActive(true);
+                                    roomAmenities.add(ra); // Hoặc roomAmenityRepository.save(ra)
+                                });
+                    }
+
+                    if (!roomAmenities.isEmpty()) {
+                        roomAmenityRepository.saveAll(roomAmenities);
+                    }
+                }
+
+                // Lưu Room Images (giữ nguyên code cũ)
                 if (data.getUnitImageUrls() != null) {
                     List<RoomImage> roomImageList = data.getUnitImageUrls().stream().map(url -> {
                         RoomImage img = new RoomImage();
@@ -358,7 +387,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
 
                     propDTO.setPropertyImageUrls(data.getPropertyImageUrls());
 
-                    // Amenities
+                    // Amenities của Property
                     if (prop.getAmenityIds() != null && !prop.getAmenityIds().isEmpty()) {
                         List<Integer> amenityIds = prop.getAmenityIds().stream()
                                 .map(id -> {
@@ -398,8 +427,26 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                         unitDTO.setWeekendPrice(prop.getUnitData().getWeekendPrice() != null ? prop.getUnitData().getWeekendPrice().doubleValue() : 0.0);
                         unitDTO.setCapacity(prop.getUnitData().getCapacity() != null ? prop.getUnitData().getCapacity() : 0);
 
-                        // Nếu cần map cả Amenities của Unit thì làm tương tự Property Amenities
-                        unitDTO.setAmenityNames(prop.getUnitData().getAmenityIds());
+                        // --- ĐÃ FIX LỖI Ở ĐÂY: Chuyển Amenity ID thành Amenity Name ---
+                        if (prop.getUnitData().getAmenityIds() != null && !prop.getUnitData().getAmenityIds().isEmpty()) {
+                            List<Integer> unitAmenityIds = prop.getUnitData().getAmenityIds().stream()
+                                    .map(id -> {
+                                        try { return Integer.parseInt(id.toString()); } catch (NumberFormatException e) { return null; }
+                                    })
+                                    .filter(java.util.Objects::nonNull)
+                                    .collect(Collectors.toList());
+
+                            if (!unitAmenityIds.isEmpty()) {
+                                List<String> unitAmenityNames = amenityRepository.findAllById(unitAmenityIds).stream()
+                                        .map(Amenity::getAmenityName)
+                                        .collect(Collectors.toList());
+                                unitDTO.setAmenityNames(unitAmenityNames);
+                            }
+                        } else {
+                            unitDTO.setAmenityNames(new ArrayList<>());
+                        }
+                        // --- KẾT THÚC FIX ---
+
                         propDTO.setUnitData(unitDTO);
                     }
 
@@ -439,4 +486,5 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 .mapToObj(i -> String.valueOf(chars.charAt(i)))
                 .collect(Collectors.joining());
     }
+
 }
