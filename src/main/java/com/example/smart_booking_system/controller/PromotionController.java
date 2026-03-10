@@ -24,7 +24,7 @@ public class PromotionController {
 
     // 1. TẠO MỚI
     @PostMapping("/create")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('PROMOTION_MANAGE', 'ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> create(@Valid @RequestBody PromotionRequestDTO req) {
         try {
             return ResponseEntity.status(201).body(
@@ -37,7 +37,7 @@ public class PromotionController {
 
     // 2. CẬP NHẬT
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('PROMOTION_MANAGE', 'ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> update(@PathVariable int id, @Valid @RequestBody PromotionRequestDTO req) {
         try {
             return ResponseEntity.ok(
@@ -50,7 +50,7 @@ public class PromotionController {
 
     // 3. XÓA
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('PROMOTION_MANAGE', 'ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> delete(@PathVariable int id) {
         try {
             promotionService.deletePromotion(id);
@@ -62,7 +62,7 @@ public class PromotionController {
 
     // 4. TOGGLE STATUS
     @PutMapping("/toggle/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('PROMOTION_MANAGE', 'ROLE_OWNER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> toggle(@PathVariable int id) {
         try {
             return ResponseEntity.ok(

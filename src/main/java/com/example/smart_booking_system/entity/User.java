@@ -95,6 +95,12 @@ public class User {
         return roles.stream().anyMatch(r -> r.getName().equalsIgnoreCase(roleName));
     }
 
+    public boolean hasPermission(String permissionCode) {
+        return roles.stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .anyMatch(p -> p.getCode().equalsIgnoreCase(permissionCode));
+    }
+
     @Enumerated(EnumType.STRING)
     private AuthProvider provider;
 

@@ -90,6 +90,10 @@ public class DataInitializer {
             createPermissionIfNotExist("BOOKING_VIEW", "Xem danh sách đặt phòng", "Quản lý đặt phòng");
             createPermissionIfNotExist("BOOKING_MANAGE", "Quản lý đặt phòng", "Quản lý đặt phòng");
 
+            // Group: Promotion Management
+            createPermissionIfNotExist("PROMOTION_VIEW", "Xem danh sách khuyến mãi", "Quản lý khuyến mãi");
+            createPermissionIfNotExist("PROMOTION_MANAGE", "Quản lý khuyến mãi", "Quản lý khuyến mãi");
+
             // Group: System
             createPermissionIfNotExist("SYSTEM_LOG_VIEW", "Xem log hệ thống", "Hệ thống");
             createPermissionIfNotExist("SYSTEM_MANAGE", "Quản lý cấu hình hệ thống", "Hệ thống");
