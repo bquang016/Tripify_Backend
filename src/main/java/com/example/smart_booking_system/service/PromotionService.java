@@ -46,7 +46,6 @@ public class PromotionService {
     public PromotionResponseDTO createPromotion(PromotionRequestDTO req) {
         User currentUser = authService.getCurrentUser();
 
-
         if (req.getPropertyId() == null) {
             // ADMIN: Không được trùng với bất kỳ mã nào ĐANG HOẠT ĐỘNG
             if (promotionRepository.existsByCodeAndStatusNot(req.getCode(), PromotionStatus.DELETED)) {
@@ -64,8 +63,9 @@ public class PromotionService {
             }
         }
 
-        if (req.getStartDate().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Ngày bắt đầu không được chọn trong quá khứ.");
+        // SỬA: Cho phép ngày bắt đầu là hôm nay (so sánh theo ngày)
+        if (req.getStartDate().toLocalDate().isBefore(LocalDateTime.now().toLocalDate())) {
+            throw new BadRequestException("Ngày bắt đầu không được trước ngày hiện tại.");
         }
         if (req.getEndDate().isBefore(req.getStartDate())) {
             throw new BadRequestException("Ngày kết thúc phải sau ngày bắt đầu.");
@@ -89,15 +89,21 @@ public class PromotionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
             boolean isOwner = property.getOwner().getUserId().equals(currentUser.getUserId());
-            boolean isAdmin = currentUser.hasRole("ADMIN");
+            // SỬA: Kiểm tra quyền quản lý hoặc vai trò Admin/Super Admin
+            boolean hasAdminPrivilege = currentUser.hasPermission("PROMOTION_MANAGE") || 
+                                       currentUser.hasRole("ADMIN") || 
+                                       currentUser.hasRole("SUPER_ADMIN");
 
-            if (!isOwner && !isAdmin) {
+            if (!isOwner && !hasAdminPrivilege) {
                 throw new ForbiddenException("Bạn không có quyền tạo khuyến mãi cho tài sản này.");
             }
             p.setProperty(property);
         } else {
-            if (!currentUser.hasRole("ADMIN")) {
-                throw new ForbiddenException("Chỉ Admin mới được tạo mã khuyến mãi toàn sàn.");
+            // SỬA: Kiểm tra quyền quản lý hoặc vai trò Admin/Super Admin
+            if (!currentUser.hasPermission("PROMOTION_MANAGE") && 
+                !currentUser.hasRole("ADMIN") && 
+                !currentUser.hasRole("SUPER_ADMIN")) {
+                throw new ForbiddenException("Bạn không có quyền tạo mã khuyến mãi toàn sàn.");
             }
             p.setProperty(null);
         }
@@ -125,6 +131,11 @@ public class PromotionService {
 
         Integer targetPropertyId = newPropertyId != null ? newPropertyId : currentPropertyId;
 
+        // Check quyền Admin/Super Admin
+        boolean hasAdminPrivilege = currentUser.hasPermission("PROMOTION_MANAGE") || 
+                                    currentUser.hasRole("ADMIN") || 
+                                    currentUser.hasRole("SUPER_ADMIN");
+
         // Check trùng lặp (Bỏ qua DELETED)
         if (isCodeChanged || (newPropertyId != null && !newPropertyId.equals(currentPropertyId))) {
             if (targetPropertyId == null) {
@@ -145,13 +156,12 @@ public class PromotionService {
 
         if (req.getPropertyId() != null) {
             if (p.getProperty() == null) {
-                if (!currentUser.hasRole("ADMIN")) throw new ForbiddenException("Không thể sửa mã toàn sàn.");
+                if (!hasAdminPrivilege) throw new ForbiddenException("Không thể sửa mã toàn sàn.");
             } else if (p.getProperty().getPropertyId() != req.getPropertyId()) {
                 Property newProperty = propertyRepository.findById(req.getPropertyId())
                         .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
                 boolean isOwner = newProperty.getOwner().getUserId().equals(currentUser.getUserId());
-                boolean isAdmin = currentUser.hasRole("ADMIN");
-                if (!isOwner && !isAdmin) throw new ForbiddenException("Bạn không sở hữu khách sạn mới này.");
+                if (!isOwner && !hasAdminPrivilege) throw new ForbiddenException("Bạn không sở hữu khách sạn mới này.");
                 p.setProperty(newProperty);
             }
         }
@@ -199,17 +209,38 @@ public class PromotionService {
     }
 
     public void deletePromotion(int id) {
+        User currentUser = authService.getCurrentUser();
         Promotion p = promotionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Not found"));
+        
+        checkPromotionOwnership(p, currentUser);
+
         p.setStatus(PromotionStatus.DELETED);
         promotionRepository.save(p);
     }
 
     public PromotionResponseDTO toggleStatus(int id) {
+        User currentUser = authService.getCurrentUser();
         Promotion p = promotionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Not found"));
+        
+        checkPromotionOwnership(p, currentUser);
+
         if(p.getStatus() == PromotionStatus.DELETED) throw new BadRequestException("Cannot toggle deleted promo");
         if (p.getStatus() == PromotionStatus.PAUSED) p.checkAndSetStatus();
         else p.setStatus(PromotionStatus.PAUSED);
         return new PromotionResponseDTO(promotionRepository.save(p));
+    }
+
+    private void checkPromotionOwnership(Promotion p, User user) {
+        boolean isAdmin = user.hasPermission("PROMOTION_MANAGE") || 
+                          user.hasRole("ADMIN") || 
+                          user.hasRole("SUPER_ADMIN");
+        
+        boolean isOwner = p.getProperty() != null && 
+                          p.getProperty().getOwner().getUserId().equals(user.getUserId());
+        
+        if (!isAdmin && !isOwner) {
+            throw new ForbiddenException("Bạn không có quyền thao tác trên khuyến mãi này.");
+        }
     }
 
     public PromotionResponseDTO suggestBestPromotion(String userId, Integer propertyId, BigDecimal bookingAmount) {

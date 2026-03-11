@@ -47,7 +47,7 @@ public class JwtTokenProvider {
     public String generateTemporaryToken(String email) {
         Date now = new Date();
         // 1 hour expiration for temporary token
-        Date expiryDate = new Date(now.getTime() + 60 * 60 * 1000);
+        Date expiryDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 giờ
 
         return Jwts.builder()
                 .setSubject(email)

@@ -107,14 +107,14 @@ public class RoomServiceImpl implements RoomService {
         );
 
         if (dto.getAmenities() != null) {
-            for (String amenityKey : dto.getAmenities()) {
-                amenityRepository.findByAmenityNameAndAmenityType(amenityKey, AmenityType.ROOM)
+            for (String frontendId : dto.getAmenities()) {
+                amenityRepository.findByAmenityNameAndAmenityType(frontendId, com.example.smart_booking_system.enums.AmenityType.ROOM)
                         .ifPresent(amenity -> {
                             RoomAmenity ra = new RoomAmenity();
-                            ra.setRoom(savedRoom);
+                            ra.setRoom(savedRoom); // (Trong OwnerApplicationServiceImpl dùng savedUnit, RoomServiceImpl dùng savedRoom)
                             ra.setAmenity(amenity);
                             ra.setActive(true);
-                            roomAmenityRepository.save(ra);
+                            roomAmenityRepository.save(ra); // Hoặc roomAmenityRepository.save(ra)
                         });
             }
         }
@@ -160,6 +160,25 @@ public class RoomServiceImpl implements RoomService {
         room.setDescription(dto.getDescription());
 
         Room savedRoom = roomRepository.save(room);
+
+        // CẬP NHẬT TIỆN ÍCH PHÒNG
+        if (dto.getAmenities() != null) {
+            // 1. Xóa hết tiện ích cũ của phòng này để làm mới
+            List<RoomAmenity> oldAmenities = roomAmenityRepository.findByRoom_RoomId(savedRoom.getRoomId());
+            roomAmenityRepository.deleteAll(oldAmenities);
+
+            // 2. Thêm lại danh sách tiện ích mới
+            for (String frontendId : dto.getAmenities()) {
+                amenityRepository.findByAmenityNameAndAmenityType(frontendId, com.example.smart_booking_system.enums.AmenityType.ROOM)
+                        .ifPresent(amenity -> {
+                            RoomAmenity ra = new RoomAmenity();
+                            ra.setRoom(savedRoom); // (Trong OwnerApplicationServiceImpl dùng savedUnit, RoomServiceImpl dùng savedRoom)
+                            ra.setAmenity(amenity);
+                            ra.setActive(true);
+                            roomAmenityRepository.save(ra); // Hoặc roomAmenityRepository.save(ra)
+                        });
+            }
+        }
 
         systemLogService.log(
                 room.getProperty().getOwner(),

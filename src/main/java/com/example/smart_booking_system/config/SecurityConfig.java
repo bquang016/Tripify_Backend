@@ -93,6 +93,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/properties/search").permitAll()
                         .requestMatchers("/api/v1/properties/featured").permitAll()
                         .requestMatchers("/api/v1/properties/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/properties/*/policies").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/property-details/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/property-images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/propertyAmenity/**").permitAll()
+
+                        // Public access for ratings
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rating/property/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rating/booking/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rating/{id}").permitAll()
+
+                        // Public access for room details
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms/property/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/room-details/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/room-images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/roomAmenity/**").permitAll()
+
                         .requestMatchers("/api/v1/payments/**").authenticated()
                         .requestMatchers("/api/v1/auth/owner/**").permitAll()
                         .requestMatchers("/api/v1/owner/register/**").permitAll()

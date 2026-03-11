@@ -160,8 +160,23 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new ConflictException("Email đã được sử dụng bởi một tài khoản khác.");
         }
-        if (ownerApplicationRepository.existsByEmailAndStatus(email, ApplicationStatus.PENDING)) {
-            throw new ConflictException("Một đơn đăng ký với email này đang được chờ duyệt.");
+
+        Optional<com.example.smart_booking_system.entity.OwnerApplication> appOpt = ownerApplicationRepository.findByEmail(email);
+        if (appOpt.isPresent()) {
+            com.example.smart_booking_system.entity.OwnerApplication app = appOpt.get();
+
+            // CHỈ CHẶN nếu đơn ĐÃ NỘP (có Application Data) và đang chờ duyệt
+            if (app.getStatus() == ApplicationStatus.PENDING && app.getApplicationData() != null) {
+                throw new ConflictException("Một đơn đăng ký với email này đã được nộp và đang được chờ duyệt.");
+            }
+
+            // Nếu đơn đã được duyệt thành công
+            if (app.getStatus() == ApplicationStatus.APPROVED) {
+                throw new ConflictException("Email này đã được đăng ký đối tác thành công. Vui lòng đăng nhập.");
+            }
+
+            // Ghi chú: Nếu status là PENDING nhưng applicationData == null
+            // Nghĩa là họ mới chỉ nhận OTP nhưng chưa hoàn thành Form -> CHUẨN BỊ CHO PHÉP GỬI LẠI OTP
         }
     }
 
