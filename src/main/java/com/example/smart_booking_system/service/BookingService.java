@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.HashMap;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class BookingService {
     private final RatingRepository ratingRepository;
     private final RefundRequestRepository refundRepo;
     private final NotificationService notificationService;
+    private final StringRedisTemplate redisTemplate;
     private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
 
     // ================================
