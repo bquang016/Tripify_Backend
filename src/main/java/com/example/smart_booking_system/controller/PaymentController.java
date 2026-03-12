@@ -4,6 +4,7 @@ import com.example.smart_booking_system.dto.request.RefundSubmitDTO;
 import com.example.smart_booking_system.entity.User;
 import com.example.smart_booking_system.repository.UserRepository;
 import com.example.smart_booking_system.security.CustomUserDetails;
+import com.example.smart_booking_system.service.BookingService;
 import com.example.smart_booking_system.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final UserRepository userRepository;
+    private final BookingService bookingService;
 
 
     // ==========================================
@@ -122,6 +124,7 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Người dùng chưa có phương thức thanh toán."));
             }
 
+            // Gọi Stripe API để thực hiện trừ tiền
             PaymentIntent intent = paymentService.createPaymentIntentWithSavedCard(
                     request.getBookingId(),
                     user.getStripeCustomerId(),
@@ -137,6 +140,12 @@ public class PaymentController {
                 ));
             }
 
+            // ✅ SỬA LỖI TẠI ĐÂY: Nếu thanh toán thành công ngay lập tức (succeeded)
+            if ("succeeded".equals(intent.getStatus())) {
+                // Gọi BookingService để đổi trạng thái đơn hàng -> CONFIRMED, PAYMENT -> APPROVED, Gửi mail...
+                bookingService.confirmBookingPayment(request.getBookingId().intValue());
+            }
+
             return ResponseEntity.ok(Map.of("success", true, "status", intent.getStatus()));
 
         } catch (Exception e) {
@@ -145,7 +154,7 @@ public class PaymentController {
         }
     }
 
-    // Webhook lắng nghe phản hồi từ Stripe (Bắt buộc phải dùng @RequestBody String payload)
+    // Webhook lắng nghe phản hồi từ Stripe
     @PostMapping("/stripe/webhook")
     public ResponseEntity<String> handleStripeWebhook(
             @RequestBody String payload,
@@ -158,19 +167,28 @@ public class PaymentController {
             return ResponseEntity.status(400).body("Webhook Signature Error");
         }
 
-        // Xử lý logic cập nhật Database tuỳ theo loại sự kiện
+        // ✅ SỬA LỖI TẠI ĐÂY: Thay TODO bằng lệnh gọi DB thực tế
         switch (event.getType()) {
             case "payment_intent.succeeded":
                 PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().get();
-                String bookingId = paymentIntent.getMetadata().get("booking_id");
-                // TODO: Gọi Service cập nhật Booking thành công
-                System.out.println("Thanh toán thành công cho Booking: " + bookingId);
+                String bookingIdStr = paymentIntent.getMetadata().get("booking_id");
+
+                if (bookingIdStr != null) {
+                    try {
+                        int bookingId = Integer.parseInt(bookingIdStr);
+                        // Cập nhật Database
+                        bookingService.confirmBookingPayment(bookingId);
+                        System.out.println("Webhook: Thanh toán thành công cho Booking: " + bookingId);
+                    } catch (Exception ex) {
+                        System.err.println("Webhook Error: " + ex.getMessage());
+                    }
+                }
                 break;
             case "payment_intent.payment_failed":
                 PaymentIntent failedIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().get();
                 String failBookingId = failedIntent.getMetadata().get("booking_id");
-                // TODO: Gọi Service cập nhật Booking thất bại
-                System.out.println("Thanh toán thất bại cho Booking: " + failBookingId);
+                System.out.println("Webhook: Thanh toán thất bại cho Booking: " + failBookingId);
+                // Có thể viết thêm hàm bookingService.failBookingPayment(failBookingId) nếu cần
                 break;
             default:
                 break;
