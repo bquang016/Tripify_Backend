@@ -1,6 +1,8 @@
 package com.example.smart_booking_system.controller;
 
 import com.example.smart_booking_system.dto.request.RefundSubmitDTO;
+import com.example.smart_booking_system.entity.User;
+import com.example.smart_booking_system.repository.UserRepository;
 import com.example.smart_booking_system.security.CustomUserDetails;
 import com.example.smart_booking_system.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +10,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import com.example.smart_booking_system.dto.request.ChargeRequest;
+import com.stripe.model.PaymentIntent;
+import org.springframework.beans.factory.annotation.Value;
+import com.stripe.net.Webhook;
+import com.stripe.model.Event;
+import java.util.List;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -16,6 +33,151 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final UserRepository userRepository;
+
+
+    // ==========================================
+    // THÊM MỚI: API STRIPE GIAI ĐOẠN 1
+    // ==========================================
+
+    @PostMapping("/stripe/setup-intent")
+    public ResponseEntity<?> createSetupIntent() { // KHÔNG dùng @AuthenticationPrincipal nữa
+        try {
+            // 1. Lấy thông tin User an toàn từ Security Context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+                return ResponseEntity.status(401).body(Map.of("error", "Vui lòng đăng nhập để thực hiện chức năng này."));
+            }
+
+            String userEmail = null;
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                userEmail = ((UserDetails) principal).getUsername();
+            } else {
+                userEmail = principal.toString();
+            }
+
+            // Tìm User thật trong DB
+            User user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng."));
+
+            // 2. Lấy Customer ID từ Stripe (tạo mới nếu User chưa có)
+            String customerId = paymentService.getOrCreateStripeCustomer(user);
+
+            // 3. Yêu cầu tạo SetupIntent
+            String clientSecret = paymentService.createSetupIntent(customerId);
+
+            // 4. Trả về cho Frontend
+            Map<String, String> response = new HashMap<>();
+            response.put("clientSecret", clientSecret);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "Không thể khởi tạo luồng lưu thẻ: " + e.getMessage()));
+        }
+    }
+
+    @Value("${stripe.webhook.secret}")
+    private String endpointSecret;
+
+    // --- Hàm Helper hỗ trợ lấy User an toàn (Tránh lỗi NullPointerException) ---
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new RuntimeException("Vui lòng đăng nhập để thực hiện chức năng này.");
+        }
+        String userEmail = authentication.getName();
+        return userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng trong hệ thống."));
+    }
+
+    // ==========================================
+    // API GIAI ĐOẠN 2: STRIPE
+    // ==========================================
+
+    @GetMapping("/stripe/cards")
+    public ResponseEntity<?> getSavedCards() {
+        try {
+            User user = getAuthenticatedUser();
+            if (user.getStripeCustomerId() == null || user.getStripeCustomerId().isEmpty()) {
+                return ResponseEntity.ok(List.of()); // Trả về list rỗng nếu chưa có thẻ
+            }
+
+            var cards = paymentService.getSavedCards(user.getStripeCustomerId());
+            // cards.getData() chứa danh sách các đối tượng PaymentMethod của Stripe
+            return ResponseEntity.ok(cards.getData());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/stripe/charge")
+    public ResponseEntity<?> chargeSavedCard(@RequestBody ChargeRequest request) {
+        try {
+            User user = getAuthenticatedUser();
+            if (user.getStripeCustomerId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Người dùng chưa có phương thức thanh toán."));
+            }
+
+            PaymentIntent intent = paymentService.createPaymentIntentWithSavedCard(
+                    request.getBookingId(),
+                    user.getStripeCustomerId(),
+                    request.getPaymentMethodId(),
+                    request.getAmount()
+            );
+
+            // Nếu ngân hàng yêu cầu xác thực 3D Secure (Mã OTP)
+            if ("requires_action".equals(intent.getStatus()) || "requires_confirmation".equals(intent.getStatus())) {
+                return ResponseEntity.ok(Map.of(
+                        "requiresAction", true,
+                        "clientSecret", intent.getClientSecret()
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "status", intent.getStatus()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Webhook lắng nghe phản hồi từ Stripe (Bắt buộc phải dùng @RequestBody String payload)
+    @PostMapping("/stripe/webhook")
+    public ResponseEntity<String> handleStripeWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Webhook Signature Error");
+        }
+
+        // Xử lý logic cập nhật Database tuỳ theo loại sự kiện
+        switch (event.getType()) {
+            case "payment_intent.succeeded":
+                PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().get();
+                String bookingId = paymentIntent.getMetadata().get("booking_id");
+                // TODO: Gọi Service cập nhật Booking thành công
+                System.out.println("Thanh toán thành công cho Booking: " + bookingId);
+                break;
+            case "payment_intent.payment_failed":
+                PaymentIntent failedIntent = (PaymentIntent) event.getDataObjectDeserializer().getObject().get();
+                String failBookingId = failedIntent.getMetadata().get("booking_id");
+                // TODO: Gọi Service cập nhật Booking thất bại
+                System.out.println("Thanh toán thất bại cho Booking: " + failBookingId);
+                break;
+            default:
+                break;
+        }
+        return ResponseEntity.ok("Received");
+    }
+
 
     // 1. Khách thanh toán (Gọi sau khi Gateway trả về success hoặc nút "Thanh toán ngay")
     @PostMapping("/{bookingId}/pay")

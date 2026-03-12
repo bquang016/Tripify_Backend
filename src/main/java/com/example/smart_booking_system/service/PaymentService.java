@@ -6,10 +6,24 @@ import com.example.smart_booking_system.dto.response.PaymentResponseDTO;
 import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.*;
 import com.example.smart_booking_system.repository.*;
+import com.stripe.Stripe;
+import com.stripe.model.Customer;
+import com.stripe.model.SetupIntent;
+import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.SetupIntentCreateParams;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.stripe.model.PaymentMethod;
+import com.stripe.model.PaymentMethodCollection;
+import com.stripe.model.PaymentIntent;
+import com.stripe.param.PaymentMethodListParams;
+import com.stripe.param.PaymentIntentCreateParams;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +41,86 @@ public class PaymentService {
     private final PromotionRepository promotionRepo;
     private final NotificationService notificationService;
     private final EntityManager entityManager;
+    private final UserRepository userRepository;
+
+
+    @Value("${stripe.api.key}")
+    private String stripeApiKey;
+
+    @PostConstruct
+    public void init() {
+        Stripe.apiKey = stripeApiKey;
+    }
+
+    // ==========================================
+    // THÊM MỚI: LOGIC STRIPE GIAI ĐOẠN 1
+    // ==========================================
+
+    /**
+     * Lấy hoặc tạo mới Stripe Customer dựa trên User hiện tại
+     */
+    public String getOrCreateStripeCustomer(User user) throws Exception {
+        // Nếu đã có stripeCustomerId trong DB thì trả về luôn
+        if (user.getStripeCustomerId() != null && !user.getStripeCustomerId().isEmpty()) {
+            return user.getStripeCustomerId();
+        }
+
+        // Nếu chưa có, tạo mới trên hệ thống Stripe
+        CustomerCreateParams params = CustomerCreateParams.builder()
+                .setEmail(user.getEmail())
+                .setName(user.getFullName())
+                .build();
+
+        Customer customer = Customer.create(params);
+
+        // Lưu lại stripeCustomerId vào Database
+        user.setStripeCustomerId(customer.getId());
+        userRepository.save(user);
+
+        return customer.getId();
+    }
+
+    /**
+     * Tạo SetupIntent để Frontend có thể hiển thị form và lưu thẻ an toàn
+     */
+    public String createSetupIntent(String customerId) throws Exception {
+        SetupIntentCreateParams params = SetupIntentCreateParams.builder()
+                .setCustomer(customerId)
+                .addPaymentMethodType("card")
+                .build();
+
+        SetupIntent setupIntent = SetupIntent.create(params);
+        // Trả về client_secret để truyền xuống Frontend
+        return setupIntent.getClientSecret();
+    }
+
+    /**
+     * GIAI ĐOẠN 2: Lấy danh sách thẻ đã lưu của một Customer
+     */
+    public PaymentMethodCollection getSavedCards(String customerId) throws Exception {
+        PaymentMethodListParams params = PaymentMethodListParams.builder()
+                .setCustomer(customerId)
+                .setType(PaymentMethodListParams.Type.CARD)
+                .build();
+        return PaymentMethod.list(params);
+    }
+
+    /**
+     * GIAI ĐOẠN 2: Khởi tạo thanh toán trừ tiền bằng thẻ đã lưu
+     */
+    public PaymentIntent createPaymentIntentWithSavedCard(Long bookingId, String customerId, String paymentMethodId, Long amountVnd) throws Exception {
+        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                .setAmount(amountVnd) // Đơn vị là VND (không có số thập phân)
+                .setCurrency("vnd")
+                .setCustomer(customerId)
+                .setPaymentMethod(paymentMethodId)
+                .setOffSession(true) // Cho phép thanh toán ngầm (nếu user không online)
+                .setConfirm(true) // Xác nhận thanh toán ngay lập tức
+                .putMetadata("booking_id", String.valueOf(bookingId)) // Gắn Booking ID để Webhook nhận diện
+                .build();
+
+        return PaymentIntent.create(params);
+    }
 
     // =================================================================
     // 1. SUBMIT PAYMENT (Khách thanh toán thành công -> Chốt đơn)
