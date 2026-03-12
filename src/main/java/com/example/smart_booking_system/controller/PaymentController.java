@@ -142,8 +142,17 @@ public class PaymentController {
 
             // ✅ SỬA LỖI TẠI ĐÂY: Nếu thanh toán thành công ngay lập tức (succeeded)
             if ("succeeded".equals(intent.getStatus())) {
-                // Gọi BookingService để đổi trạng thái đơn hàng -> CONFIRMED, PAYMENT -> APPROVED, Gửi mail...
+                // 1. Cập nhật trạng thái Booking
                 bookingService.confirmBookingPayment(request.getBookingId().intValue());
+
+                // 2. LƯU LẠI PAYMENT INTENT ID VÀO DATABASE ĐỂ SAU NÀY HOÀN TIỀN
+                // Giả sử paymentService có hàm lưu lịch sử giao dịch:
+                paymentService.saveStripeTransaction(
+                        request.getBookingId().intValue(),
+                        intent.getId(), // Đây là mã pi_xxxxxx cần thiết cho việc Refund
+                        request.getAmount(),
+                        "STRIPE_CARD"
+                );
             }
 
             return ResponseEntity.ok(Map.of("success", true, "status", intent.getStatus()));
@@ -194,6 +203,24 @@ public class PaymentController {
                 break;
         }
         return ResponseEntity.ok("Received");
+    }
+
+    @DeleteMapping("/stripe/cards/{paymentMethodId}")
+    public ResponseEntity<?> deleteSavedCard(@PathVariable String paymentMethodId) {
+        try {
+            User user = getAuthenticatedUser();
+            if (user.getStripeCustomerId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Người dùng chưa có phương thức thanh toán."));
+            }
+
+            // Gọi service xoá thẻ
+            paymentService.deletePaymentMethod(paymentMethodId, user.getStripeCustomerId());
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Xoá thẻ thành công"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
 

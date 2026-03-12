@@ -24,6 +24,8 @@ import com.stripe.model.PaymentMethodCollection;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentMethodListParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.model.Refund;
+import com.stripe.param.RefundCreateParams;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -121,6 +123,52 @@ public class PaymentService {
 
         return PaymentIntent.create(params);
     }
+
+    /**
+     * GIAI ĐOẠN 3: Xoá thẻ đã lưu (Detach Payment Method)
+     */
+    public boolean deletePaymentMethod(String paymentMethodId, String customerId) throws Exception {
+        PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentMethodId);
+
+        // Kiểm tra bảo mật: Đảm bảo thẻ này đúng là của Customer đang yêu cầu xoá
+        if (paymentMethod.getCustomer() != null && paymentMethod.getCustomer().equals(customerId)) {
+            paymentMethod.detach();
+            return true;
+        }
+        throw new Exception("Bạn không có quyền thao tác với thẻ này hoặc thẻ không tồn tại.");
+    }
+
+    /**
+     * GIAI ĐOẠN 3: Gọi API Stripe để hoàn tiền tự động về thẻ
+     * @param paymentIntentId Mã giao dịch Stripe (pi_xxxxxx)
+     * @param amountVnd Số tiền cần hoàn (Nếu null, Stripe sẽ hoàn toàn bộ)
+     */
+    private Refund createStripeRefund(String paymentIntentId, Long amountVnd) throws Exception {
+        RefundCreateParams.Builder paramsBuilder = RefundCreateParams.builder()
+                .setPaymentIntent(paymentIntentId);
+
+        if (amountVnd != null && amountVnd > 0) {
+            paramsBuilder.setAmount(amountVnd);
+        }
+
+        return Refund.create(paramsBuilder.build());
+    }
+
+    @Transactional
+    public void saveStripeTransaction(int bookingId, String transactionId, Long amount, String method) {
+        // Tìm Payment dựa theo Booking ID (Sử dụng hàm repo sẵn có của bạn)
+        Payment payment = paymentRepo.findByBooking_BookingId(bookingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Payment cho Booking ID: " + bookingId));
+
+        payment.setTransactionReference(transactionId); // RẤT QUAN TRỌNG: Lưu lại mã pi_xxxxx
+        payment.setPaymentMethod(method);
+        payment.setPaymentStatus(PaymentStatus.APPROVED);
+        payment.setPaymentDate(LocalDateTime.now());
+
+        paymentRepo.save(payment);
+    }
+
+
 
     // =================================================================
     // 1. SUBMIT PAYMENT (Khách thanh toán thành công -> Chốt đơn)
@@ -258,6 +306,27 @@ public class PaymentService {
 
         // 2. Cập nhật trạng thái
         if (isApproved) {
+
+            // ==========================================================
+            // [MỚI] TÍCH HỢP STRIPE REFUND API VÀO ĐÂY
+            // ==========================================================
+            String transactionId = payment.getTransactionReference();
+            if (transactionId != null && transactionId.startsWith("pi_")) {
+                try {
+                    // Gọi API Stripe để hoàn tiền thật sự về thẻ khách hàng
+                    Long refundAmount = refund.getAmount() != null ? refund.getAmount().longValue() : null;
+                    Refund stripeRefund = createStripeRefund(transactionId, refundAmount);
+
+                    System.out.println("✅ Stripe Refund Success. Refund ID: " + stripeRefund.getId());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // NẾU LỖI TỪ STRIPE (Vd: số dư không đủ), NGĂN KHÔNG CHO DUYỆT TRONG DB
+                    return ApiResponse.error("Lỗi từ cổng thanh toán Stripe: " + e.getMessage());
+                }
+            }
+            // ==========================================================
+
+            // (Logic cũ của bạn) Nếu Stripe thành công, hoặc nếu là VNPay/MoMo thì đi tiếp xuống đây
             refund.setStatus(RefundRequestStatus.APPROVED);
             payment.setPaymentStatus(PaymentStatus.REFUNDED);
             payment.setRefundedAmount(refund.getAmount());
@@ -272,14 +341,14 @@ public class PaymentService {
         refundRepo.save(refund);
         paymentRepo.save(payment);
 
-        // 3. ✅ GỬI EMAIL & THÔNG BÁO
+        // 3. ✅ GỬI EMAIL & THÔNG BÁO (GIỮ NGUYÊN 100% LOGIC CỦA BẠN)
         try {
             String relatedId = String.valueOf(booking.getBookingId());
             String amountFormatted = String.format("%,.0f", refund.getAmount());
 
             // --- A. TRƯỜNG HỢP DUYỆT (APPROVED) ---
             if (isApproved) {
-                // 1. Gửi Email cho khách (Logic cũ của bạn)
+                // 1. Gửi Email cho khách
                 String emailTo = booking.getCustomerEmail() != null ? booking.getCustomerEmail() : booking.getUser().getEmail();
                 String nameTo = booking.getCustomerName() != null ? booking.getCustomerName() : booking.getUser().getFullName();
 
@@ -291,42 +360,39 @@ public class PaymentService {
                         String.format("%,.0f", booking.getPenaltyAmount()) // Phí phạt
                 );
 
-                // 2. [FIX] Gửi thông báo cho OWNER
+                // 2. Gửi thông báo cho OWNER
                 User owner = booking.getProperty().getOwner();
                 if (owner != null) {
                     notificationService.sendNotification(
-                            owner.getUserId(), // [SỬA] Lấy String ID
+                            owner.getUserId(),
                             "Hoàn tiền Booking #" + booking.getBookingId(),
                             "Admin đã chấp thuận hoàn tiền " + amountFormatted + " VNĐ cho khách hàng. Số dư của bạn sẽ được cập nhật.",
-                            NotificationType.BOOKING_CANCELLED_BY_GUEST, // [SỬA] Dùng Type của Owner (Vì hoàn tiền thường đi kèm hủy)
+                            NotificationType.BOOKING_CANCELLED_BY_GUEST,
                             relatedId
                     );
                 }
 
-                // 3. [MỚI] Gửi thông báo cho CUSTOMER (Quan trọng)
-                // Khách cần biết yêu cầu của mình đã được duyệt
+                // 3. Gửi thông báo cho CUSTOMER (Quan trọng)
                 User customer = booking.getUser();
                 if (customer != null) {
                     notificationService.sendNotification(
                             customer.getUserId(),
                             "Yêu cầu hoàn tiền được duyệt",
                             "Yêu cầu hoàn tiền " + amountFormatted + " VNĐ cho đơn #" + booking.getBookingId() + " đã được chấp thuận.",
-                            NotificationType.REFUND_PROCESSED, // [SỬA] Dùng Type của Customer
+                            NotificationType.REFUND_PROCESSED,
                             relatedId
                     );
                 }
             }
-
             // --- B. TRƯỜNG HỢP TỪ CHỐI (REJECTED) ---
             else {
-                // Nên báo cho khách biết tại sao bị từ chối
                 User customer = booking.getUser();
                 if (customer != null) {
                     notificationService.sendNotification(
                             customer.getUserId(),
                             "Yêu cầu hoàn tiền bị từ chối",
                             "Admin đã từ chối hoàn tiền cho đơn #" + booking.getBookingId() + ". Lý do: " + adminNote,
-                            NotificationType.GENERAL, // Dùng type chung vì không có Type REJECTED_REFUND
+                            NotificationType.GENERAL,
                             relatedId
                     );
                 }
