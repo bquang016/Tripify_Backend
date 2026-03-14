@@ -35,6 +35,9 @@ public class User {
     @Column(length = 32)
     private String phoneNumber;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
     private Boolean isEmailVerified = false;
     private Boolean twoFactorEnabled = false;
 
