@@ -13,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import com.example.smart_booking_system.service.VNPayService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +25,8 @@ import com.stripe.model.PaymentIntent;
 import org.springframework.beans.factory.annotation.Value;
 import com.stripe.net.Webhook;
 import com.stripe.model.Event;
+
+import java.util.Enumeration;
 import java.util.List;
 
 import java.util.HashMap;
@@ -36,6 +40,7 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final UserRepository userRepository;
     private final BookingService bookingService;
+    private final VNPayService vnPayService;
 
 
     // ==========================================
@@ -224,14 +229,75 @@ public class PaymentController {
     }
 
 
+
+
     // 1. Khách thanh toán (Gọi sau khi Gateway trả về success hoặc nút "Thanh toán ngay")
     @PostMapping("/{bookingId}/pay")
     public ResponseEntity<?> submitPayment(
             @PathVariable int bookingId,
-            @RequestParam(defaultValue = "Online Banking") String method,
-            @RequestParam(required = false) String note
+            @RequestParam(defaultValue = "VNPAY") String method,
+            @RequestParam(required = false) Long amount,
+            HttpServletRequest request // Thêm cái này để lấy IP
     ) {
-        return ResponseEntity.ok(paymentService.submitPayment(bookingId, note, method));
+        try {
+            // Nếu là VNPAY, sinh URL và trả về cho Frontend
+            if ("VNPAY".equalsIgnoreCase(method)) {
+                if (amount == null || amount <= 0) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
+                }
+                String paymentUrl = vnPayService.createOrder(bookingId, amount, request);
+                return ResponseEntity.ok(Map.of("success", true, "paymentUrl", paymentUrl));
+            }
+
+            // Nếu là các phương thức khác (giữ nguyên logic cũ của bạn)
+            return ResponseEntity.ok(paymentService.submitPayment(bookingId, "Thanh toán qua cổng", method));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/vnpay-return")
+    public ResponseEntity<?> vnpayReturn(HttpServletRequest request) {
+        Map<String, String> fields = new HashMap<>();
+        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
+            String fieldName = params.nextElement();
+            String fieldValue = request.getParameter(fieldName);
+            if (fieldValue != null && fieldValue.length() > 0) {
+                fields.put(fieldName, fieldValue);
+            }
+        }
+
+        // 1. Xác thực chữ ký xem có đúng là của VNPay gửi không (Chống mạo danh)
+        boolean isAuthentic = vnPayService.verifySignature(fields);
+        if (!isAuthentic) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Chữ ký không hợp lệ!"));
+        }
+
+        // 2. Kiểm tra mã phản hồi (00 nghĩa là thanh toán thành công)
+        String vnp_ResponseCode = fields.get("vnp_ResponseCode");
+        String vnp_OrderInfo = fields.get("vnp_OrderInfo"); // Đây chính là bookingId ta đã nhét vào lúc tạo URL
+        String vnp_TransactionNo = fields.get("vnp_TransactionNo"); // Mã giao dịch thực tế của VNPay
+
+        try {
+            int bookingId = Integer.parseInt(vnp_OrderInfo);
+
+            if ("00".equals(vnp_ResponseCode)) {
+                // Thanh toán thành công -> Cập nhật Database
+                bookingService.confirmBookingPayment(bookingId);
+
+                // Lưu lại mã giao dịch của VNPay để sau này có thể hoàn tiền (nếu cần)
+                Long amount = Long.parseLong(fields.get("vnp_Amount")) / 100;
+                paymentService.saveStripeTransaction(bookingId, vnp_TransactionNo, amount, "VNPAY");
+
+                return ResponseEntity.ok(Map.of("success", true, "message", "Thanh toán thành công"));
+            } else {
+                // Thanh toán thất bại (Khách hủy, thẻ hết tiền...)
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giao dịch bị hủy hoặc thất bại"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Lỗi xử lý hệ thống"));
+        }
     }
 
     // 2. Lịch sử giao dịch của User đang login
