@@ -7,10 +7,8 @@ import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.*;
 import com.example.smart_booking_system.repository.*;
 import com.stripe.Stripe;
-import com.stripe.model.Customer;
-import com.stripe.model.SetupIntent;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.model.*;
+import com.stripe.param.*;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,14 +16,8 @@ import lombok.RequiredArgsConstructor;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.stripe.model.PaymentMethod;
-import com.stripe.model.PaymentMethodCollection;
-import com.stripe.model.PaymentIntent;
-import com.stripe.param.PaymentMethodListParams;
-import com.stripe.param.PaymentIntentCreateParams;
-import com.stripe.model.Refund;
-import com.stripe.param.RefundCreateParams;
+import com.stripe.model.Transfer;
+import com.stripe.param.TransferCreateParams;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -166,6 +158,43 @@ public class PaymentService {
         payment.setPaymentDate(LocalDateTime.now());
 
         paymentRepo.save(payment);
+    }
+
+    /**
+     * GIAI ĐOẠN 2: TẠO TÀI KHOẢN STRIPE CONNECT CHO OWNER
+     * @return stripeAccountId (Dạng acct_1Nxxxxxxx)
+     */
+    public String createStripeConnectedAccount(String email, String stripeToken) throws Exception {
+        AccountCreateParams params = AccountCreateParams.builder()
+                .setType(AccountCreateParams.Type.CUSTOM) // Custom account (ẩn danh đối với Stripe)
+                .setCountry("US") // Dùng "US" ở môi trường Test để dễ pass các thủ tục pháp lý
+                .setEmail(email)
+                .setCapabilities(
+                        AccountCreateParams.Capabilities.builder()
+                                .setTransfers(AccountCreateParams.Capabilities.Transfers.builder().setRequested(true).build())
+                                .build()
+                )
+                // Gắn thẳng cái token thẻ VISA mà Front-end vừa gửi lên làm thẻ thụ hưởng
+                .setExternalAccount(stripeToken)
+                .build();
+
+        Account account = Account.create(params);
+        return account.getId();
+    }
+
+    /**
+     * GIAI ĐOẠN 3: ĐẨY TIỀN DOANH THU CHO OWNER
+     */
+    public String transferToOwner(Long amountVnd, String connectedAccountId) throws Exception {
+        TransferCreateParams params = TransferCreateParams.builder()
+                .setAmount(amountVnd) // Stripe yêu cầu nhập số tiền chẵn (VND không có số thập phân)
+                .setCurrency("vnd")
+                .setDestination(connectedAccountId) // ID tài khoản của Owner (acct_xxx)
+                .setDescription("Tripify: Thanh toán doanh thu định kỳ")
+                .build();
+
+        Transfer transfer = Transfer.create(params);
+        return transfer.getId(); // Trả về mã tr_xxxx để đối soát
     }
 
 

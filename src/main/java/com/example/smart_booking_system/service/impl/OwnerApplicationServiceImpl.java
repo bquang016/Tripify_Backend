@@ -16,6 +16,7 @@ import com.example.smart_booking_system.service.FileStorageService;
 import com.example.smart_booking_system.service.OwnerApplicationService;
 import com.example.smart_booking_system.enums.RoomCategory;
 import com.example.smart_booking_system.repository.RoomAmenityRepository;
+import com.example.smart_booking_system.service.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,6 +54,7 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
     private final FileStorageService fileStorageService;
+    private final PaymentService paymentService;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -234,9 +236,31 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 }
             }
 
-            // 5. Create PaymentDetail
+            // 5. Create PaymentDetail và Tích hợp Stripe Connect
             OwnerApplicationRequest.PaymentInfo paymentInfo = data.getPaymentInfo();
             if (paymentInfo != null) {
+
+                // [MỚI] LOGIC TẠO TÀI KHOẢN STRIPE CONNECT
+                if ("card".equals(paymentInfo.getPaymentMethod()) && paymentInfo.getStripeToken() != null) {
+                    try {
+                        // Gọi Stripe API tạo tài khoản ẩn danh và gắn thẻ vào
+                        String stripeAccountId = paymentService.createStripeConnectedAccount(
+                                savedUser.getEmail(),
+                                paymentInfo.getStripeToken()
+                        );
+
+                        // Lưu ID (acct_xxx) vào Entity User
+                        savedUser.setStripeAccountId(stripeAccountId);
+                        userRepository.save(savedUser); // Cập nhật lại User với stripeAccountId
+
+                    } catch (Exception e) {
+                        // Cân nhắc ném ra ngoại lệ hoặc ghi log nếu tạo Stripe Account thất bại
+                        // Nếu ném ngoại lệ, toàn bộ transaction sẽ rollback (bao gồm cả việc tạo User, Property...)
+                        throw new InternalServerException("Lỗi khi tạo tài khoản Stripe Connect: " + e.getMessage());
+                    }
+                }
+
+                // Lưu thông tin thanh toán vào PaymentDetail (như cũ)
                 PaymentDetail paymentDetail = new PaymentDetail();
                 paymentDetail.setUser(savedUser);
                 paymentDetail.setPaymentMethod(paymentInfo.getPaymentMethod());

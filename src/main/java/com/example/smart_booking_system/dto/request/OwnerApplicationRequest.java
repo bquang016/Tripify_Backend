@@ -89,5 +89,9 @@ public class OwnerApplicationRequest {
         private String bankName;
         private String accountHolderName;
         private String accountNumber;
+
+        private String stripeToken;
+        private String cardLast4;
+        private String cardBrand;
     }
 }

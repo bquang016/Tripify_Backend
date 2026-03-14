@@ -1,16 +1,18 @@
 package com.example.smart_booking_system.dto.request;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-// Corresponds to the 'paymentInfo' object
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class OnboardingPaymentInfoRequest {
-    private String paymentMethod;
+    private String paymentMethod; // "bank" or "card"
+    private String bankBin;
     private String bankName;
-    private String accountHolderName;
+    private String bankLogo;
+    private String accountName;
     private String accountNumber;
+
+    // --- CÁC TRƯỜNG DÀNH CHO STRIPE PAYOUT (THÊM MỚI) ---
+    private String stripeToken;
+    private String cardLast4;
+    private String cardBrand;
 }

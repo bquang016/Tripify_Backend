@@ -276,4 +276,20 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
                                @Param("checkIn") LocalDate checkIn,
                                @Param("checkOut") LocalDate checkOut);
 
+    // ========================================================================
+    // PAYOUT & ACCOUNTING QUERIES (KẾ TOÁN & ĐỐI SOÁT)
+    // ========================================================================
+
+    // Lấy danh sách booking đã HOÀN TẤT của Owner trong khoảng thời gian để chia tiền
+    @Query("SELECT b FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND b.status = com.example.smart_booking_system.enums.BookingStatus.COMPLETED " +
+            "AND b.checkOutDate >= :startDate " +
+            "AND b.checkOutDate <= :endDate")
+    List<Booking> findCompletedBookingsForPayout(
+            @Param("ownerId") String ownerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
 }
