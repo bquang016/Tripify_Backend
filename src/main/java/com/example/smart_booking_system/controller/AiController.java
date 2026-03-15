@@ -18,27 +18,24 @@ public class AiController {
 
     private final AiService aiService;
 
+    // Sửa đổi phương thức chat trong AiController.java
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<ChatResponseDTO>> chat(
             @RequestBody ChatRequestDTO request,
-            @AuthenticationPrincipal CustomUserDetails currentUser
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestHeader(value = "X-Guest-Id", required = false) String guestId // Frontend gửi lên một ID cố định lưu
+                                                                                  // ở localStorage
     ) {
         try {
-            String userId = (currentUser != null)
-                    ? currentUser.getUserId()
-                    : "guest-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            String sessionId = (currentUser != null) ? currentUser.getUserId()
+                    : (guestId != null ? guestId : "default-guest-session");
 
-            ChatResponseDTO aiResult = aiService.processChat(userId, request.getMessage());
+            ChatResponseDTO aiResult = aiService.processChat(sessionId, request.getMessage());
 
-            return ResponseEntity.ok(
-                    ApiResponse.success("AI trả lời thành công", aiResult)
-            );
-
+            return ResponseEntity.ok(ApiResponse.success("AI trả lời thành công", aiResult));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Lỗi xử lý AI: " + e.getMessage()));
         }
     }
-
 }
-

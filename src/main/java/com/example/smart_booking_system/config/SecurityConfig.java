@@ -87,7 +87,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/**").permitAll()
 
-                        .requestMatchers("/uploads/**", "/images/**", "/properties/**", "/api/v1/files/**", "/ratingImage/**").permitAll()
+                        .requestMatchers("/uploads/**", "/images/**", "/properties/**", "/api/v1/files/**",
+                                "/ratingImage/**")
+                        .permitAll()
                         .requestMatchers("/api/v1/properties/search").permitAll()
                         .requestMatchers("/api/v1/properties/featured").permitAll()
                         .requestMatchers("/api/v1/properties/{id}").permitAll()
@@ -117,8 +119,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/user-details/me",
                                 "/api/v1/user-details/update",
-                                "/api/v1/user-details/profile-status"
-                        ).authenticated()
+                                "/api/v1/user-details/profile-status")
+                        .authenticated()
 
                         // ===== 3. ADMIN ROUTES =====
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
@@ -136,8 +138,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/properties/update/**").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/v1/room/**").hasAnyRole("OWNER", "ADMIN", "SUPER_ADMIN")
 
-                        // ===== 7. DEFAULT =====
+                        // ===== 7.n8n routes=====
+                        .requestMatchers("/api/v1/internal/**").permitAll()
+                        .requestMatchers("/api/v1/ai/**").permitAll()
+
+                        // ===== 8. DEFAULT =====
                         .anyRequest().authenticated()
+
                 )
                 // ✅ CẤU HÌNH OAUTH2 LOGIN Ở ĐÂY
                 .oauth2Login(oauth2 -> oauth2
