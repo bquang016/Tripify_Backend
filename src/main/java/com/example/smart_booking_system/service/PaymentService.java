@@ -197,6 +197,26 @@ public class PaymentService {
         return transfer.getId(); // Trả về mã tr_xxxx để đối soát
     }
 
+    /**
+     * THỰC THI STRIPE TRANSFER (Dành cho tính năng Rút Tiền)
+     * Gọi hàm này khi Admin duyệt yêu cầu rút tiền của Chủ nhà.
+     */
+    public String processStripeTransfer(Long amountVnd, String connectedAccountId, String description) throws Exception {
+        if (connectedAccountId == null || connectedAccountId.isEmpty()) {
+            throw new RuntimeException("Chủ nhà chưa liên kết tài khoản Stripe hợp lệ.");
+        }
+
+        TransferCreateParams params = TransferCreateParams.builder()
+                .setAmount(amountVnd) // Số tiền VNĐ
+                .setCurrency("vnd")
+                .setDestination(connectedAccountId) // ID tài khoản của Owner (acct_xxx)
+                .setDescription(description != null ? description : "Tripify: Thanh toán lệnh rút tiền")
+                .build();
+
+        Transfer transfer = Transfer.create(params);
+        return transfer.getId(); // Trả về mã tr_xxxx để đối soát
+    }
+
 
 
     // =================================================================

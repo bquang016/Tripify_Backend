@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/admin/payouts")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // Chỉ Admin mới được chia tiền
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminPayoutController {
 
     private final PayoutService payoutService;
