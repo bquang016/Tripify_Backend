@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.example.smart_booking_system.service.WalletService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class OwnerWithdrawalController {
 
     private final WithdrawalService withdrawalService;
+    private final WalletService walletService;
 
     // 1. API: Owner tạo lệnh rút tiền
     @PostMapping("/request")
@@ -44,5 +46,21 @@ public class OwnerWithdrawalController {
         List<WithdrawalRequest> history = withdrawalService.getWithdrawalHistoryByOwner(userDetails.getUserId());
         List<WithdrawalResponseDTO> responseList = history.stream().map(WithdrawalResponseDTO::new).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", responseList));
+    }
+
+    // 3. API: Lấy thông tin số dư Ví
+    @GetMapping("/wallet")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<ApiResponse<?>> getMyWallet(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            var wallet = walletService.getWalletByOwnerId(userDetails.getUserId());
+            // Trả về thẳng một Map cho nhanh, không cần tạo DTO mới
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("availableBalance", wallet.getAvailableBalance());
+            data.put("pendingBalance", wallet.getPendingBalance());
+            return ResponseEntity.ok(ApiResponse.success("Lấy thông tin ví thành công", data));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 }

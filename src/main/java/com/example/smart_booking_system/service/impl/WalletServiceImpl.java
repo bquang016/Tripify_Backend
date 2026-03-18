@@ -92,4 +92,9 @@ public class WalletServiceImpl implements WalletService {
         log.info("Đã cộng {} (sau khi trừ 15% phí) vào ví Pending của Owner {} cho Booking ID {}",
                 ownerRevenue, owner.getUserId(), booking.getBookingId());
     }
+    @Override
+    public Wallet getWalletByOwnerId(String ownerId) {
+        return walletRepository.findByOwner_UserId(ownerId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví của Chủ nhà này"));
+    }
 }
