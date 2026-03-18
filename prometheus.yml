@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s # Cứ 15 giây đi lấy dữ liệu 1 lần
+
+scrape_configs:
+  - job_name: 'tripify-spring-boot-backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # 'backend' ở đây chính là tên service backend trong docker-compose của bạn
+      - targets: ['backend:8386']
