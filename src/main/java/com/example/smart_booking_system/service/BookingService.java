@@ -35,6 +35,7 @@ public class BookingService {
     private final RatingRepository ratingRepository;
     private final RefundRequestRepository refundRepo;
     private final NotificationService notificationService;
+    private final WalletService walletService;
     private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
 
     // ================================
@@ -464,6 +465,7 @@ public class BookingService {
 
         // 1. Cập nhật trạng thái Booking
         booking.setStatus(BookingStatus.COMPLETED);
+        walletService.addBookingRevenueToPending(booking);
 
         // 2. TÍCH ĐIỂM & THĂNG HẠNG
         if (booking.getTotalPrice() != null) {
@@ -501,10 +503,10 @@ public class BookingService {
                     String.valueOf(booking.getBookingId()),
                     propertyName
             );
-            logger.info("✅ Đã gửi email cảm ơn checkout cho Booking ID: {}", bookingId);
+            logger.info("Đã gửi email cảm ơn checkout cho Booking ID: {}", bookingId);
         } catch (Exception e) {
             // Log lỗi nhưng không chặn transaction checkout (để khách vẫn checkout được dù lỗi mail)
-            logger.error("❌ Lỗi gửi mail cảm ơn sau checkout: {}", e.getMessage());
+            logger.error("Lỗi gửi mail cảm ơn sau checkout: {}", e.getMessage());
         }
     }
 
