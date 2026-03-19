@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.smart_booking_system.dto.request.owner.PayoutSettingsDTO;
+import com.example.smart_booking_system.enums.PayoutMethod;
+import com.example.smart_booking_system.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,6 +27,8 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
+    private final com.example.smart_booking_system.repository.UserRepository userRepository;
+    private final com.example.smart_booking_system.service.PaymentService paymentService;
 
     // Fix cứng hoa hồng nền tảng là 15%
     private static final BigDecimal PLATFORM_FEE_PERCENTAGE = new BigDecimal("0.15");
@@ -96,5 +101,129 @@ public class WalletServiceImpl implements WalletService {
     public Wallet getWalletByOwnerId(String ownerId) {
         return walletRepository.findByOwner_UserId(ownerId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví của Chủ nhà này"));
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public PayoutSettingsDTO getPayoutSettings(String ownerEmail) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+
+        Wallet wallet = getOrCreateWallet(owner);
+
+        return PayoutSettingsDTO.builder()
+                .defaultPayoutMethod(wallet.getDefaultPayoutMethod().name())
+                .bankName(wallet.getBankName())
+                .accountHolderName(wallet.getAccountHolderName())
+                .accountNumber(wallet.getAccountNumber())
+                .stripeAccountId(wallet.getStripeAccountId())
+                .cardLast4(wallet.getCardLast4())
+                .cardBrand(wallet.getCardBrand())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public PayoutSettingsDTO updatePayoutSettings(String ownerEmail, PayoutSettingsDTO request) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+
+        // Dùng hàm getOrCreateWallet đã tạo ở các bước trước
+        Wallet wallet = getOrCreateWallet(owner);
+
+        // 1. Cập nhật phương thức thanh toán mặc định
+        if (request.getDefaultPayoutMethod() != null) {
+            try {
+                PayoutMethod requestedMethod = PayoutMethod.valueOf(request.getDefaultPayoutMethod());
+                wallet.setDefaultPayoutMethod(requestedMethod);
+            } catch (IllegalArgumentException e) {
+                wallet.setDefaultPayoutMethod(PayoutMethod.NONE);
+            }
+        }
+
+        // 2. Cập nhật thông tin Ngân hàng (Bank)
+        if (request.getBankName() != null) wallet.setBankName(request.getBankName());
+        if (request.getAccountHolderName() != null) wallet.setAccountHolderName(request.getAccountHolderName());
+        if (request.getAccountNumber() != null) wallet.setAccountNumber(request.getAccountNumber());
+
+        // 3. Cập nhật thông tin Stripe qua Token
+        if (request.getStripeToken() != null && !request.getStripeToken().isEmpty()) {
+            try {
+                String stripeAccountId = wallet.getStripeAccountId();
+                com.stripe.model.Card stripeCard = null;
+
+                if (stripeAccountId == null || stripeAccountId.isEmpty()) {
+                    // KỊCH BẢN A: Chủ nhà chưa có tài khoản Stripe Connect -> Tạo mới toàn bộ
+                    stripeAccountId = paymentService.createStripeConnectedAccount(owner.getEmail(), request.getStripeToken());
+                    wallet.setStripeAccountId(stripeAccountId);
+
+                    // Đồng bộ lưu ID vào bảng User (vì DataInitializer/Entity của bạn có trường này ở User)
+                    owner.setStripeAccountId(stripeAccountId);
+                    userRepository.save(owner);
+
+                    // Lấy data thẻ vừa khởi tạo
+                    stripeCard = paymentService.getConnectAccountDefaultCard(stripeAccountId);
+                } else {
+                    // KỊCH BẢN B: Chủ nhà đã có Connect Account -> Gọi Stripe gắn thẻ mới thay thế
+                    com.stripe.model.ExternalAccount externalAccount = paymentService.addExternalAccountToConnect(stripeAccountId, request.getStripeToken());
+                    if (externalAccount instanceof com.stripe.model.Card) {
+                        stripeCard = (com.stripe.model.Card) externalAccount;
+                    }
+                }
+
+                // Lưu lại thông tin hiển thị (4 số cuối, hãng thẻ) xuống DB
+                if (stripeCard != null) {
+                    wallet.setCardLast4(stripeCard.getLast4());
+                    wallet.setCardBrand(stripeCard.getBrand());
+                }
+
+            } catch (Exception e) {
+                // Quăng lỗi ra để Controller bắt và trả về Frontend (Ví dụ: Thẻ hết hạn, CVV sai...)
+                throw new RuntimeException("Lỗi xác thực thẻ từ Stripe: " + e.getMessage());
+            }
+        }
+
+        walletRepository.save(wallet);
+
+        // Trả về dữ liệu mới nhất
+        return getPayoutSettings(ownerEmail);
+    }
+    @Override
+    @Transactional
+    public PayoutSettingsDTO deletePaymentMethod(String ownerEmail, String type) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+        Wallet wallet = getOrCreateWallet(owner);
+
+        if ("bank".equalsIgnoreCase(type)) {
+            wallet.setBankName(null);
+            wallet.setAccountHolderName(null);
+            wallet.setAccountNumber(null);
+            if (wallet.getDefaultPayoutMethod() == PayoutMethod.BANK_TRANSFER) {
+                wallet.setDefaultPayoutMethod(PayoutMethod.NONE);
+            }
+        } else if ("stripe".equalsIgnoreCase(type)) {
+            wallet.setStripeAccountId(null);
+            wallet.setCardLast4(null);
+            wallet.setCardBrand(null);
+            if (wallet.getDefaultPayoutMethod() == PayoutMethod.STRIPE) {
+                wallet.setDefaultPayoutMethod(PayoutMethod.NONE);
+            }
+        }
+
+        walletRepository.save(wallet);
+        return getPayoutSettings(ownerEmail);
+    }
+    // Hàm hỗ trợ: Tìm Ví, nếu chưa có thì tự động tạo mới
+    private Wallet getOrCreateWallet(User owner) {
+        return walletRepository.findByOwner(owner)
+                .orElseGet(() -> {
+                    Wallet newWallet = Wallet.builder()
+                            .owner(owner)
+                            .availableBalance(BigDecimal.ZERO)
+                            .pendingBalance(BigDecimal.ZERO)
+                            .defaultPayoutMethod(PayoutMethod.NONE)
+                            .build();
+                    return walletRepository.save(newWallet);
+                });
     }
 }
