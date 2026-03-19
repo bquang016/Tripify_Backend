@@ -24,7 +24,7 @@ public class AdminWithdrawalController {
 
     // 1. API: Admin lấy toàn bộ danh sách yêu cầu rút tiền
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> getAllRequests() {
         List<WithdrawalRequest> requests = withdrawalService.getAllWithdrawalRequests();
         List<WithdrawalResponseDTO> responseList = requests.stream().map(WithdrawalResponseDTO::new).collect(Collectors.toList());
@@ -33,7 +33,7 @@ public class AdminWithdrawalController {
 
     // 2. API: Admin duyệt lệnh (Gọi Stripe bắn tiền)
     @PostMapping("/{requestId}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> approveWithdrawal(
             @PathVariable Long requestId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -47,7 +47,7 @@ public class AdminWithdrawalController {
 
     // 3. API: Admin từ chối lệnh
     @PostMapping("/{requestId}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> rejectWithdrawal(
             @PathVariable Long requestId,
             @RequestBody WithdrawalRejectRequest payload,
