@@ -98,7 +98,12 @@ public class DataInitializer {
             createPermissionIfNotExist("SYSTEM_LOG_VIEW", "Xem log hệ thống", "Hệ thống");
             createPermissionIfNotExist("SYSTEM_MANAGE", "Quản lý cấu hình hệ thống", "Hệ thống");
             createPermissionIfNotExist("REPORTS_VIEW", "Xem báo cáo doanh thu", "Hệ thống");
-            createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Hệ thống");
+
+            // Group: Finance Management (Thanh toán & Hoàn tiền)
+            createPermissionIfNotExist("PAYMENT_VIEW", "Xem danh sách giao dịch", "Quản lý dòng tiền");
+            createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Quản lý dòng tiền");
+            createPermissionIfNotExist("REFUND_VIEW", "Xem danh sách hoàn tiền", "Quản lý dòng tiền");
+            createPermissionIfNotExist("REFUND_APPROVE", "Phê duyệt hoàn tiền", "Quản lý dòng tiền");
         } catch (Exception e) {
             System.err.println("⚠️ Warning: Could not initialize permissions. This is likely because the database schema is being updated. Please restart the application. Error: " + e.getMessage());
         }
