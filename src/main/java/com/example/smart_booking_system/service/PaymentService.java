@@ -7,10 +7,8 @@ import com.example.smart_booking_system.entity.*;
 import com.example.smart_booking_system.enums.*;
 import com.example.smart_booking_system.repository.*;
 import com.stripe.Stripe;
-import com.stripe.model.Customer;
-import com.stripe.model.SetupIntent;
-import com.stripe.param.CustomerCreateParams;
-import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.model.*;
+import com.stripe.param.*;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,14 +16,8 @@ import lombok.RequiredArgsConstructor;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.stripe.model.PaymentMethod;
-import com.stripe.model.PaymentMethodCollection;
-import com.stripe.model.PaymentIntent;
-import com.stripe.param.PaymentMethodListParams;
-import com.stripe.param.PaymentIntentCreateParams;
-import com.stripe.model.Refund;
-import com.stripe.param.RefundCreateParams;
+import com.stripe.model.Transfer;
+import com.stripe.param.TransferCreateParams;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -110,15 +102,26 @@ public class PaymentService {
     /**
      * GIAI ĐOẠN 2: Khởi tạo thanh toán trừ tiền bằng thẻ đã lưu
      */
+    /**
+     * GIAI ĐOẠN 2: Khởi tạo thanh toán trừ tiền bằng thẻ đã lưu (CỦA KHÁCH HÀNG)
+     */
     public PaymentIntent createPaymentIntentWithSavedCard(Long bookingId, String customerId, String paymentMethodId, Long amountVnd) throws Exception {
+
+        // ========================================================
+        // [QUY ĐỔI TIỀN TỆ] Khách trả VNĐ trên giao diện, nhưng charge USD ngầm
+        // Để tiền chảy vào đúng ví USD của Admin.
+        // ========================================================
+        long amountUsd = amountVnd / 25000;       // Đổi VNĐ ra USD
+        long amountStripeCents = amountUsd * 100; // Đổi USD ra Cents (1 USD = 100 Cents)
+
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-                .setAmount(amountVnd) // Đơn vị là VND (không có số thập phân)
-                .setCurrency("vnd")
+                .setAmount(amountStripeCents) // Truyền số Cents USD vào
+                .setCurrency("usd")           // ĐỔI "vnd" THÀNH "usd"
                 .setCustomer(customerId)
                 .setPaymentMethod(paymentMethodId)
-                .setOffSession(true) // Cho phép thanh toán ngầm (nếu user không online)
-                .setConfirm(true) // Xác nhận thanh toán ngay lập tức
-                .putMetadata("booking_id", String.valueOf(bookingId)) // Gắn Booking ID để Webhook nhận diện
+                .setOffSession(true) // Cho phép thanh toán ngầm
+                .setConfirm(true)    // Xác nhận thanh toán ngay lập tức
+                .putMetadata("booking_id", String.valueOf(bookingId))
                 .build();
 
         return PaymentIntent.create(params);
@@ -166,6 +169,110 @@ public class PaymentService {
         payment.setPaymentDate(LocalDateTime.now());
 
         paymentRepo.save(payment);
+    }
+
+    /**
+     * GIAI ĐOẠN 2: TẠO TÀI KHOẢN STRIPE CONNECT CHO OWNER
+     * @return stripeAccountId (Dạng acct_1Nxxxxxxx)
+     */
+    public String createStripeConnectedAccount(String email, String stripeToken) throws Exception {
+        AccountCreateParams params = AccountCreateParams.builder()
+                .setType(AccountCreateParams.Type.CUSTOM)
+                .setCountry("US")
+                .setEmail(email)
+                // ==========================================
+                // [MỚI] KHAI BÁO THÊM THÔNG TIN CÁ NHÂN ĐỂ PASS KYC
+                // ==========================================
+                .setBusinessType(AccountCreateParams.BusinessType.INDIVIDUAL)
+                .setIndividual(
+                        AccountCreateParams.Individual.builder()
+                                .setFirstName("Tripify")
+                                .setLastName("Partner")
+                                .setEmail(email)
+                                .setPhone("+10000000000") // SĐT test của Mỹ
+                                .setDob(
+                                        AccountCreateParams.Individual.Dob.builder()
+                                                .setDay(1L)
+                                                .setMonth(1L)
+                                                .setYear(1990L)
+                                                .build()
+                                )
+                                .setAddress(
+                                        AccountCreateParams.Individual.Address.builder()
+                                                .setLine1("123 Test Street")
+                                                .setCity("San Francisco")
+                                                .setState("CA")
+                                                .setPostalCode("94105")
+                                                .build()
+                                )
+                                .build()
+                )
+                .setBusinessProfile(
+                        AccountCreateParams.BusinessProfile.builder()
+                                .setMcc("4722") // Travel Agencies
+                                .setUrl("https://tripify.com")
+                                .build()
+                )
+                .setTosAcceptance(
+                        AccountCreateParams.TosAcceptance.builder()
+                                .setDate(System.currentTimeMillis() / 1000L)
+                                .setIp("8.8.8.8")
+                                .build()
+                )
+                .setCapabilities(
+                        AccountCreateParams.Capabilities.builder()
+                                .setTransfers(AccountCreateParams.Capabilities.Transfers.builder().setRequested(true).build())
+                                .build()
+                )
+                .setExternalAccount(stripeToken)
+                .build();
+
+        Account account = Account.create(params);
+        return account.getId();
+    }
+
+    /**
+     * GIAI ĐOẠN 3: ĐẨY TIỀN DOANH THU CHO OWNER
+     */
+    public String transferToOwner(Long amountVnd, String connectedAccountId) throws Exception {
+        TransferCreateParams params = TransferCreateParams.builder()
+                .setAmount(amountVnd) // Stripe yêu cầu nhập số tiền chẵn (VND không có số thập phân)
+                .setCurrency("vnd")
+                .setDestination(connectedAccountId) // ID tài khoản của Owner (acct_xxx)
+                .setDescription("Tripify: Thanh toán doanh thu định kỳ")
+                .build();
+
+        Transfer transfer = Transfer.create(params);
+        return transfer.getId(); // Trả về mã tr_xxxx để đối soát
+    }
+
+    /**
+     * THỰC THI STRIPE TRANSFER (Dành cho tính năng Rút Tiền)
+     * Gọi hàm này khi Admin duyệt yêu cầu rút tiền của Chủ nhà.
+     */
+    public String processStripeTransfer(Long amountVnd, String connectedAccountId, String description) throws Exception {
+        if (connectedAccountId == null || connectedAccountId.isEmpty()) {
+            throw new RuntimeException("Chủ nhà chưa liên kết tài khoản Stripe hợp lệ.");
+        }
+
+        // ========================================================
+        // [FIX LỖI TIỀN TỆ]
+        // Vì ví Admin đang chứa USD, ta cần quy đổi VNĐ sang USD
+        // Giả định tỷ giá: 1 USD = 25.000 VNĐ
+        // Lưu ý: Stripe yêu cầu số tiền phải ở dạng Cents (1 USD = 100 Cents)
+        // ========================================================
+        long amountUsd = amountVnd / 25000; // Đổi VNĐ ra USD
+        long amountStripeCents = amountUsd * 100; // Đổi USD ra Cents theo chuẩn Stripe
+
+        TransferCreateParams params = TransferCreateParams.builder()
+                .setAmount(amountStripeCents) // Truyền số tiền đã đổi sang Cents (Ví dụ 850k VND -> $34 -> 3400 Cents)
+                .setCurrency("usd")           // ĐỔI "vnd" THÀNH "usd" Ở ĐÂY
+                .setDestination(connectedAccountId)
+                .setDescription(description != null ? description : "Tripify: Thanh toán lệnh rút tiền")
+                .build();
+
+        Transfer transfer = Transfer.create(params);
+        return transfer.getId(); // Trả về mã tr_xxxx để đối soát
     }
 
 
@@ -418,5 +525,33 @@ public class PaymentService {
         try {
             emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getUser().getFullName(), String.valueOf(booking.getBookingId()));
         } catch (Exception e) { System.err.println("Error mail: " + e.getMessage()); }
+    }
+    /**
+     * THÊM MỚI: Gắn thẻ (External Account) vào tài khoản Stripe Connect có sẵn
+     */
+    public com.stripe.model.ExternalAccount addExternalAccountToConnect(String accountId, String stripeToken) throws Exception {
+        Account account = Account.retrieve(accountId);
+
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("external_account", stripeToken);
+        params.put("default_for_currency", true); // Bắt buộc set làm mặc định để nhận tiền VND
+
+        return account.getExternalAccounts().create(params);
+    }
+
+    /**
+     * THÊM MỚI: Lấy thông tin thẻ (Card) mặc định của tài khoản Connect
+     */
+    public com.stripe.model.Card getConnectAccountDefaultCard(String accountId) throws Exception {
+        Account account = Account.retrieve(accountId);
+
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("object", "card");
+
+        ExternalAccountCollection externalAccounts = account.getExternalAccounts().list(params);
+        if (!externalAccounts.getData().isEmpty()) {
+            return (com.stripe.model.Card) externalAccounts.getData().get(0);
+        }
+        return null;
     }
 }

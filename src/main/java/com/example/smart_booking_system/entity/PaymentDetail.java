@@ -29,4 +29,10 @@ public class PaymentDetail {
     private String accountHolderName;
 
     private String accountNumber;
+
+    @Column(name = "is_default")
+    private Boolean isDefault = false;
+
+    @Column(name = "provider")
+    private String provider;
 }
