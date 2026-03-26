@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="owner_revenue" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-1234-56789abcdef0">
+
+    <parameter name="ownerName" class="java.lang.String"/>
+    <parameter name="reportDate" class="java.lang.String"/>
+    <parameter name="totalCumulativeRevenue" class="java.lang.Double"/>
+    <parameter name="todayRevenue" class="java.lang.Double"/>
+    <parameter name="newOrdersToday" class="java.lang.Integer"/>
+
+    <field name="month" class="java.lang.String"/>
+    <field name="totalBookings" class="java.lang.Integer"/>
+    <field name="totalRevenue" class="java.lang.Double"/>
+
+    <title>
+        <band height="200">
+            <rectangle>
+                <reportElement x="0" y="0" width="555" height="40" backcolor="#059669" uuid="11111111-1111-1111-1111-111111111111"/>
+                <graphicElement><pen lineWidth="0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="10" y="5" width="200" height="30" forecolor="#FFFFFF" uuid="22222222-2222-2222-2222-222222222222"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="18" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[TRIPIFY PARTNER]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="400" y="5" width="145" height="30" forecolor="#FFFFFF" uuid="33333333-3333-3333-3333-333333333333"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="12" isItalic="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[ID Báo cáo: B6]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="0" y="50" width="555" height="30" forecolor="#0F172A" uuid="44444444-4444-4444-4444-444444444444"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="20" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[BÁO CÁO LỢI NHUẬN CÁ NHÂN]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="0" y="90" width="80" height="20" forecolor="#64748B" uuid="55555555-5555-5555-5555-555555555555"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Chủ sở hữu:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="80" y="90" width="200" height="20" forecolor="#0F172A" uuid="66666666-6666-6666-6666-666666666666"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ownerName}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="110" width="80" height="20" forecolor="#64748B" uuid="77777777-7777-7777-7777-777777777777"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Thời gian:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="80" y="110" width="200" height="20" forecolor="#0F172A" uuid="88888888-8888-8888-8888-888888888888"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{reportDate}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="130" width="80" height="20" forecolor="#64748B" uuid="99999999-9999-9999-9999-999999999999"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Mục đích:]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="80" y="130" width="470" height="20" forecolor="#0F172A" uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isItalic="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Giúp chủ sở hữu nắm bắt tình hình tài chính tức thì trong ngày và tổng thể.]]></text>
+            </staticText>
+
+            <rectangle>
+                <reportElement x="0" y="160" width="175" height="35" backcolor="#F1F5F9" uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"/>
+                <graphicElement><pen lineWidth="0.5" lineColor="#CBD5E1"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="0" y="162" width="175" height="15" forecolor="#64748B" uuid="cccccccc-cccc-cccc-cccc-cccccccccccc"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[TỔNG DOANH THU]]></text>
+            </staticText>
+            <textField pattern="#,##0 VND">
+                <reportElement x="0" y="177" width="175" height="15" forecolor="#059669" uuid="dddddddd-dddd-dddd-dddd-dddddddddddd"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{totalCumulativeRevenue}]]></textFieldExpression>
+            </textField>
+
+            <rectangle>
+                <reportElement x="190" y="160" width="175" height="35" backcolor="#F1F5F9" uuid="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"/>
+                <graphicElement><pen lineWidth="0.5" lineColor="#CBD5E1"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="190" y="162" width="175" height="15" forecolor="#64748B" uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[DOANH THU TRONG NGÀY]]></text>
+            </staticText>
+            <textField pattern="#,##0 VND">
+                <reportElement x="190" y="177" width="175" height="15" forecolor="#0284C7" uuid="00000001-0001-0001-0001-000000000001"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{todayRevenue}]]></textFieldExpression>
+            </textField>
+
+            <rectangle>
+                <reportElement x="380" y="160" width="175" height="35" backcolor="#F1F5F9" uuid="00000002-0002-0002-0002-000000000002"/>
+                <graphicElement><pen lineWidth="0.5" lineColor="#CBD5E1"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="380" y="162" width="175" height="15" forecolor="#64748B" uuid="00000003-0003-0003-0003-000000000003"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[SỐ ĐƠN MỚI TRONG NGÀY]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="380" y="177" width="175" height="15" forecolor="#EA580C" uuid="00000004-0004-0004-0004-000000000004"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{newOrdersToday}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25">
+            <staticText>
+                <reportElement x="0" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000005-0005-0005-0005-000000000005"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Thời gian (Tháng/Năm)]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="185" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000006-0006-0006-0006-000000000006"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Số lượt đặt phòng]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="370" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000007-0007-0007-0007-000000000007"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Doanh thu (VND)]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="25">
+            <textField>
+                <reportElement x="0" y="0" width="185" height="25" uuid="00000008-0008-0008-0008-000000000008"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{month}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="185" y="0" width="185" height="25" uuid="00000009-0009-0009-0009-000000000009"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{totalBookings}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0">
+                <reportElement x="370" y="0" width="185" height="25" forecolor="#059669" uuid="0000000a-000a-000a-000a-00000000000a"/>
+                <box rightPadding="10"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{totalRevenue}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="30">
+            <staticText>
+                <reportElement x="0" y="10" width="555" height="20" forecolor="#94A3B8" uuid="0000000b-000b-000b-000b-00000000000b"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8" isItalic="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Hệ thống quản lý đặt phòng Tripify - Báo cáo được xuất tự động]]></text>
+            </staticText>
+        </band>
+    </pageFooter>
+</jasperReport>
