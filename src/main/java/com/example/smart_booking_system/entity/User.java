@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString; // ✅ Import mới
 import lombok.EqualsAndHashCode; // ✅ Import mới
+import jakarta.persistence.Column;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -59,6 +60,10 @@ public class User {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    @Column(name = "is_first_login", nullable = false, columnDefinition = "boolean default true")
+    private Boolean isFirstLogin = true;
+
 
     //membership - rank
     private int points = 0;
