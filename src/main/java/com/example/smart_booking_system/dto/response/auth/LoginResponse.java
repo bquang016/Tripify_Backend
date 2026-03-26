@@ -29,6 +29,7 @@ public class LoginResponse {
         private Boolean isEmailVerified;
         private String status;
         private Set<String> roles;
+        private Boolean isFirstLogin;
     }
 
     public LoginResponse(String accessToken, Long expiresIn, UserResponse user) {

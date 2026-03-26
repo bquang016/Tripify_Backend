@@ -15,6 +15,7 @@ public class UserDetailResponseDTO {
     private String email;
     private String fullName;
     private String phoneNumber;
+    private Boolean isFirstLogin;
 
     // Các trường từ UserDetail
     private Integer userdetailId;
@@ -44,6 +45,7 @@ public class UserDetailResponseDTO {
         dto.setEmail(user.getEmail());
         dto.setFullName(user.getFullName());
         dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setIsFirstLogin(user.getIsFirstLogin());
 
         if (user.getUserDetail() != null) {
             dto.setUserdetailId(user.getUserDetail().getUserdetailId());
