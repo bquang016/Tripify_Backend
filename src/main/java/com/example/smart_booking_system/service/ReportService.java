@@ -6,11 +6,11 @@ import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
 import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import net.sf.jasperreports.export.SimpleXlsxReportConfiguration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -18,9 +18,10 @@ import java.util.Map;
 public class ReportService {
 
     public byte[] generateReport(String templateName, Map<String, Object> parameters, List<?> data, String format) throws Exception {
-        // 1. Load file jrxml từ resources
-        File file = ResourceUtils.getFile("classpath:reports/" + templateName + ".jrxml");
-        JasperReport jasperReport = JasperCompileManager.compileReport(file.getAbsolutePath());
+
+        // SỬA Ở ĐÂY: Dùng ClassPathResource.getInputStream() để đọc file trong cả file .jar
+        InputStream reportStream = new ClassPathResource("reports/" + templateName + ".jrxml").getInputStream();
+        JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
 
         // 2. Map dữ liệu vào báo cáo
         JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(data);
