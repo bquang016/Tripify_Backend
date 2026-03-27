@@ -98,7 +98,12 @@ public class DataInitializer {
             createPermissionIfNotExist("SYSTEM_LOG_VIEW", "Xem log hệ thống", "Hệ thống");
             createPermissionIfNotExist("SYSTEM_MANAGE", "Quản lý cấu hình hệ thống", "Hệ thống");
             createPermissionIfNotExist("REPORTS_VIEW", "Xem báo cáo doanh thu", "Hệ thống");
-            createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Hệ thống");
+
+            // Group: Finance Management (Thanh toán & Hoàn tiền)
+            createPermissionIfNotExist("PAYMENT_VIEW", "Xem danh sách giao dịch", "Quản lý dòng tiền");
+            createPermissionIfNotExist("PAYMENT_APPROVE", "Phê duyệt thanh toán", "Quản lý dòng tiền");
+            createPermissionIfNotExist("REFUND_VIEW", "Xem danh sách hoàn tiền", "Quản lý dòng tiền");
+            createPermissionIfNotExist("REFUND_APPROVE", "Phê duyệt hoàn tiền", "Quản lý dòng tiền");
         } catch (Exception e) {
             System.err.println("⚠️ Warning: Could not initialize permissions. This is likely because the database schema is being updated. Please restart the application. Error: " + e.getMessage());
         }
@@ -152,24 +157,30 @@ public class DataInitializer {
         }
 
         // 2. Admin thường
-        roleRepository.findByName("ADMIN")
+        Role admin = roleRepository.findByName("ADMIN")
                 .orElseGet(() -> {
                     Role role = new Role();
                     role.setName("ADMIN");
                     role.setDescription("Quản trị viên hệ thống");
                     role.setIsSuper(false);
                     role.setCreatedAt(LocalDateTime.now());
-                    
-                    // Chỉ gán quyền mặc định khi TẠO MỚI lần đầu
-                    Set<Permission> adminPerms = permissionRepository.findAll().stream()
-                            .filter(p -> !p.getCode().equals("SYSTEM_LOG_VIEW"))
-                            .collect(java.util.stream.Collectors.toSet());
-                    role.setPermissions(adminPerms);
-                    
                     Role saved = roleRepository.save(role);
-                    System.out.println("✅ Created role: ADMIN with default permissions");
+                    System.out.println("✅ Created role: ADMIN");
                     return saved;
                 });
+
+        // Chỉ gán quyền mặc định NẾU vai trò ADMIN hiện đang trống quyền (lần đầu tạo)
+        if (admin.getPermissions().isEmpty()) {
+            Set<Permission> adminPerms = permissionRepository.findAll().stream()
+                    .filter(p -> !p.getCode().equals("SYSTEM_LOG_VIEW"))
+                    .collect(java.util.stream.Collectors.toSet());
+            
+            if (!adminPerms.isEmpty()) {
+                admin.setPermissions(adminPerms);
+                roleRepository.save(admin);
+                System.out.println("✅ Initialized default permissions for ADMIN (all except SYSTEM_LOG_VIEW)");
+            }
+        }
 
         // 3. Hotel Owner
         roleRepository.findByName("OWNER")

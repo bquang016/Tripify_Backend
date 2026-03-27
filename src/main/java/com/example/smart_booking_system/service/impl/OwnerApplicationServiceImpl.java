@@ -16,12 +16,16 @@ import com.example.smart_booking_system.service.FileStorageService;
 import com.example.smart_booking_system.service.OwnerApplicationService;
 import com.example.smart_booking_system.enums.RoomCategory;
 import com.example.smart_booking_system.repository.RoomAmenityRepository;
+import com.example.smart_booking_system.service.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
+import com.example.smart_booking_system.repository.WalletRepository;
+import com.example.smart_booking_system.enums.PayoutMethod;
+import java.math.BigDecimal;
 
 import java.security.SecureRandom;
 import java.time.LocalDate;
@@ -53,6 +57,8 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
     private final FileStorageService fileStorageService;
+    private final PaymentService paymentService;
+    private final WalletRepository walletRepository;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -234,9 +240,27 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 }
             }
 
-            // 5. Create PaymentDetail
+            // 5. Tích hợp Stripe Connect, Lưu PaymentDetail & KHỞI TẠO WALLET
             OwnerApplicationRequest.PaymentInfo paymentInfo = data.getPaymentInfo();
+            String stripeAccountId = null; // Biến tạm để lưu ID Stripe nếu có
+
             if (paymentInfo != null) {
+                // [LOGIC CŨ] TẠO TÀI KHOẢN STRIPE CONNECT
+                if ("card".equalsIgnoreCase(paymentInfo.getPaymentMethod()) && paymentInfo.getStripeToken() != null) {
+                    try {
+                        stripeAccountId = paymentService.createStripeConnectedAccount(
+                                savedUser.getEmail(),
+                                paymentInfo.getStripeToken()
+                        );
+                        savedUser.setStripeAccountId(stripeAccountId);
+                        userRepository.save(savedUser);
+
+                    } catch (Exception e) {
+                        throw new InternalServerException("Lỗi khi tạo tài khoản Stripe Connect: " + e.getMessage());
+                    }
+                }
+
+                // [LOGIC CŨ] Lưu PaymentDetail (Giữ lại nếu bạn đang dùng bảng này cho mục đích lưu log/lịch sử)
                 PaymentDetail paymentDetail = new PaymentDetail();
                 paymentDetail.setUser(savedUser);
                 paymentDetail.setPaymentMethod(paymentInfo.getPaymentMethod());
@@ -245,6 +269,38 @@ public class OwnerApplicationServiceImpl implements OwnerApplicationService {
                 paymentDetail.setAccountNumber(paymentInfo.getAccountNumber());
                 paymentDetailRepository.save(paymentDetail);
             }
+
+            // ==========================================
+            // [MỚI - GIAI ĐOẠN 2] KHỞI TẠO VÀ MAP DỮ LIỆU WALLET
+            // ==========================================
+            Wallet wallet = Wallet.builder()
+                    .owner(savedUser)
+                    .availableBalance(BigDecimal.ZERO)
+                    .pendingBalance(BigDecimal.ZERO)
+                    .defaultPayoutMethod(PayoutMethod.NONE)
+                    .build();
+
+            if (paymentInfo != null) {
+                String method = paymentInfo.getPaymentMethod();
+
+                // Nếu là Bank Transfer
+                if ("bank".equalsIgnoreCase(method) || "bank_transfer".equalsIgnoreCase(method)) {
+                    wallet.setBankName(paymentInfo.getBankName());
+                    wallet.setAccountHolderName(paymentInfo.getAccountHolderName());
+                    wallet.setAccountNumber(paymentInfo.getAccountNumber());
+                    wallet.setDefaultPayoutMethod(PayoutMethod.BANK_TRANSFER);
+                }
+                // Nếu là Stripe (Thẻ)
+                else if ("card".equalsIgnoreCase(method) || "stripe".equalsIgnoreCase(method)) {
+                    wallet.setStripeAccountId(stripeAccountId);
+                    wallet.setDefaultPayoutMethod(PayoutMethod.STRIPE);
+                    // Ghi chú: cardLast4 và cardBrand lúc này đang null. Bạn có thể lấy thông tin
+                    // này từ payload frontend (nếu có gửi lên) hoặc gọi Stripe API để update sau.
+                }
+            }
+
+            // Lưu Wallet vào database
+            walletRepository.save(wallet);
 
             // 6. Update Application Status
             application.setStatus(ApplicationStatus.APPROVED);

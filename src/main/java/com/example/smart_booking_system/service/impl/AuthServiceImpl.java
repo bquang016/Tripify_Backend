@@ -316,7 +316,8 @@ public class AuthServiceImpl implements AuthService {
                 savedUser.getPhoneNumber(),
                 savedUser.getIsEmailVerified(),
                 savedUser.getStatus(),
-                roles
+                roles,
+                savedUser.getIsFirstLogin()
         );
 
         return new LoginResponse(token, expiresIn, userResponse);
@@ -376,7 +377,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getIsEmailVerified(),
                 user.getStatus(),
-                roles
+                roles,
+                user.getIsFirstLogin()
         );
 
         return new LoginResponse(token, expiresIn, userResponse);
@@ -433,7 +435,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-
     @Transactional
     public void changePassword(ChangePasswordRequest request, String userId) {
         User user = userRepository.findById(userId)
@@ -452,6 +453,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        user.setIsFirstLogin(false);
+
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
     }
@@ -603,7 +607,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getIsEmailVerified(),
                 user.getStatus(),
-                roles
+                roles,
+                user.getIsFirstLogin()
         );
 
         return new LoginResponse(token, expiresIn, userResponse);

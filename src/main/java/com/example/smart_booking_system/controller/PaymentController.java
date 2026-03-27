@@ -326,7 +326,7 @@ public class PaymentController {
 
     // 4. Admin xử lý hoàn tiền
     @PutMapping("/refund-process/{requestId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('REFUND_APPROVE')")
     public ResponseEntity<?> processRefund(
             @PathVariable int requestId,
             @RequestParam boolean approve,
@@ -337,8 +337,18 @@ public class PaymentController {
 
     // 5. Admin xem tất cả giao dịch
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('PAYMENT_VIEW')")
     public ResponseEntity<?> getAllTransactions() {
         return ResponseEntity.ok(paymentService.getAllTransactions());
+    }
+
+    // 6. Admin xem danh sách yêu cầu hoàn tiền (Mới bổ sung)
+    @GetMapping("/refund-requests")
+    @PreAuthorize("hasAuthority('REFUND_VIEW')")
+    public ResponseEntity<?> getRefundRequests() {
+        // Trả về danh sách giao dịch có chứa yêu cầu hoàn tiền
+        return ResponseEntity.ok(paymentService.getAllTransactions().stream()
+                .filter(p -> p.getRefundInfo() != null)
+                .toList());
     }
 }
