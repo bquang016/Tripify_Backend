@@ -308,4 +308,19 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("endDate") LocalDate endDate
     );
 
+    @Query("SELECT b FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND (:propertyId IS NULL OR b.property.propertyId = :propertyId) " + // ✅ Đổi thành IS NULL
+            "AND b.checkInDate >= :startDate " +
+            "AND b.checkInDate <= :endDate " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.CHECKED_IN, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED)")
+    List<Booking> findBookingsForRevenueReportWithProperty(
+            @Param("ownerId") String ownerId,
+            @Param("propertyId") Integer propertyId, // ✅ Đổi kiểu dữ liệu thành Integer
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
 }

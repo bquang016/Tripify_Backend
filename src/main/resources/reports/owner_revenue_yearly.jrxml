@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="owner_revenue_yearly" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-1234-56789abcdef0">
+    <parameter name="ownerName" class="java.lang.String"/>
+    <parameter name="reportDate" class="java.lang.String"/>
+    <parameter name="generationTime" class="java.lang.String"/>
+    <parameter name="totalCumulativeRevenue" class="java.lang.Double"/>
+    <parameter name="todayRevenue" class="java.lang.Double"/>
+    <parameter name="newOrdersToday" class="java.lang.Integer"/>
+
+    <field name="period" class="java.lang.String"/>
+    <field name="totalBookings" class="java.lang.Integer"/>
+    <field name="totalRevenue" class="java.lang.Double"/>
+
+    <title>
+    </title>
+
+    <columnHeader>
+        <band height="25">
+            <staticText>
+                <reportElement x="0" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000005-0005-0005-0005-000000000005"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Thời gian (Năm)]]></text> </staticText>
+            <staticText>
+                <reportElement x="185" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000006-0006-0006-0006-000000000006"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Số lượt đặt phòng]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="370" y="0" width="185" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="00000007-0007-0007-0007-000000000007"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="10" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Doanh thu (VND)]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="25">
+            <textField>
+                <reportElement x="0" y="0" width="185" height="25" uuid="00000008-0008-0008-0008-000000000008"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{period}]]></textFieldExpression> </textField>
+        </band>
+    </detail>
+</jasperReport>
