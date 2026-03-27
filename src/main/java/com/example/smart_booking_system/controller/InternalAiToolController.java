@@ -20,17 +20,16 @@ public class InternalAiToolController {
 
     private final PropertyDetailRepository propertyDetailRepository;
 
-    // Lấy secret key từ file config
     @Value("${ai.internal.secret}")
     private String internalSecret;
 
     @GetMapping("/search-hotels")
     public ResponseEntity<?> searchHotels(
-            @RequestHeader("X-Internal-Secret") String secretHeader, // Bắt buộc phải có header này
+            @RequestHeader("X-Internal-Secret") String secretHeader,
             @RequestParam String city,
             @RequestParam int capacity) {
 
-        // 1. Kiểm tra xem n8n có đưa đúng mật khẩu không
+        // 1. Kiểm tra khóa bảo mật từ n8n
         if (!internalSecret.equals(secretHeader)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied: Sai khóa bảo mật nội bộ!");
         }
@@ -38,16 +37,20 @@ public class InternalAiToolController {
         // 2. Lấy dữ liệu từ Database
         List<Property> properties = propertyDetailRepository.findAvailableProperties(city.toLowerCase(), capacity);
 
-        // 3. TỐI ƯU DTO CHO AI: Chỉ map các trường thật sự cần thiết để AI đọc
-        // Lưu ý: Các hàm get() dưới đây giả định theo entity Property của bạn, bạn có
-        // thể thêm/bớt cho phù hợp
+        // 3. TỐI ƯU DTO CHO AI (Mớm đủ dữ liệu để AI nặn ra JSON chuẩn cho Frontend)
         List<Map<String, Object>> optimizedResults = properties.stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("propertyId", p.getPropertyId());
             map.put("name", p.getPropertyName());
             map.put("address", p.getAddress() != null ? p.getAddress() : "Đang cập nhật");
-            // map.put("price", p.getBasePrice()); // Mở comment nếu Property có trường giá
-            // map.put("thumbnail", p.getThumbnailUrl()); // Mở comment nếu có ảnh
+
+            // Bắt buộc phải có Giá tiền và Rating để AI tư vấn và nhét vào JSON Frontend
+            // map.put("price", p.getPrice()); // Đã mở comment
+            map.put("rating", 5); // Có thể thay bằng p.getRating() nếu DB của bạn có
+
+            // Sinh sẵn URL để AI ném về cho Frontend (Thay đổi /hotel/ thành route của bạn)
+            map.put("bookingUrl", "/hotels/" + p.getPropertyId());
+
             return map;
         }).collect(Collectors.toList());
 
