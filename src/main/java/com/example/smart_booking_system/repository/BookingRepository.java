@@ -168,13 +168,6 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     @Query("SELECT b FROM Booking b WHERE b.property.owner.userId = :ownerId ORDER BY b.createdAt DESC LIMIT 10")
     List<Booking> findRecentBookingsByOwner(@Param("ownerId") String ownerId);
 
-    // 9. Cơ cấu doanh thu theo loại hình
-    @Query("SELECT b.property.propertyType, SUM(b.totalPrice) " +
-            "FROM Booking b " +
-            "WHERE b.property.owner.userId = :ownerId " +
-            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
-            "GROUP BY b.property.propertyType")
-    List<Object[]> getRevenueByPropertyTypeByOwner(@Param("ownerId") String ownerId);
 
     // ==============================
 // ADMIN DASHBOARD FILTER QUERIES
@@ -322,5 +315,14 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    // 9. Cơ cấu doanh thu và hiệu suất theo loại hình
+    @Query("SELECT b.property.propertyType, SUM(b.totalPrice), COUNT(b) " +
+            "FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
+            "GROUP BY b.property.propertyType")
+    List<Object[]> getRevenueByPropertyTypeByOwner(@Param("ownerId") String ownerId);
+
 
 }

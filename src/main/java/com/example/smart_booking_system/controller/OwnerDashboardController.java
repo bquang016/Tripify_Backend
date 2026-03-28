@@ -61,28 +61,33 @@ public class OwnerDashboardController {
             List<OwnerDashboardDTO.ChartData> revenueChart = processChartData(bookingRepo.getMonthlyRevenueByOwner(ownerId, currentYear));
             List<OwnerDashboardDTO.ChartData> bookingTrends = processChartData(bookingRepo.getMonthlyBookingCountByOwner(ownerId, currentYear));
 
-            // 4. Cơ cấu doanh thu (Pie Chart)
+            // 4. Cơ cấu doanh thu và số lượt đặt phòng theo loại hình
             List<Object[]> typeData = bookingRepo.getRevenueByPropertyTypeByOwner(ownerId);
             List<OwnerDashboardDTO.PieChartData> revenueByType = new ArrayList<>();
             if (typeData != null) {
                 for (Object[] obj : typeData) {
-                    revenueByType.add(new OwnerDashboardDTO.PieChartData(obj[0].toString(), (Number) obj[1]));
+                    revenueByType.add(new OwnerDashboardDTO.PieChartData(
+                            obj[0] != null ? obj[0].toString() : "Chưa phân loại",
+                            obj[1] != null ? (Number) obj[1] : 0,
+                            obj[2] != null ? (Number) obj[2] : 0
+                    ));
                 }
             }
 
             // 5. Đánh giá gần đây (Review Widget)
-            List<Rating> reviewsRaw = ratingRepo.findRecentReviewsByOwner(ownerId, PageRequest.of(0, 3));
+            List<Rating> reviewsRaw = ratingRepo.findRecentReviewsByOwner(ownerId, PageRequest.of(0, 20));
             List<OwnerDashboardDTO.ReviewDTO> recentReviews = reviewsRaw.stream()
                     .map(r -> OwnerDashboardDTO.ReviewDTO.builder()
                             .id(r.getRatingId())
                             .user(r.getUserId() != null ? r.getUserId().getFullName() : "Ẩn danh")
                             .rating(r.getRating())
                             .text(r.getComment())
-                            // ✅ FIX LỖI 500 Ở ĐÂY: Kiểm tra null cho createdAt
                             .date(r.getCreatedAt() != null ? r.getCreatedAt().toLocalDate().toString() : "")
+                            // Lấy câu trả lời (Giả sử Entity Rating của bạn có trường ownerReply hoặc reply)
+                            // Nếu chưa có trường này trong Entity, bạn có thể tạm để null hoặc chuỗi rỗng
+                            .reply(null)
                             .build())
                     .toList();
-
             // 6. Booking gần đây (Table)
             List<Booking> recentRaw = bookingRepo.findRecentBookingsByOwner(ownerId);
             List<OwnerDashboardDTO.RecentBookingDTO> recentBookings = recentRaw.stream()
