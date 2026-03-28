@@ -8,9 +8,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BookingDetailReportDTO {
-    private String bookingId;     // Mã đơn hàng (Rút gọn)
+    private String period;        // Thời gian
     private String customerName;  // Tên khách hàng
-    private String createdDate;   // Ngày tạo (Bao gồm cả giờ)
-    private String checkInDate;   // Ngày nhận phòng
-    private Double totalPrice;    // Giá trị đơn
+    private String email;         // Email
+    private String createdDate;   // Ngày tạo đơn
+    private String checkInDate;   // Check-in
+    private String status;        // Trạng thái
+    private String propertyName;  // Cơ sở lưu trú (Cột mới thêm)
+    private Double totalPrice;    // Số tiền
 }

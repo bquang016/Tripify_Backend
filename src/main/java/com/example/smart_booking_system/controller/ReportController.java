@@ -1,8 +1,9 @@
 package com.example.smart_booking_system.controller;
 
-import com.example.smart_booking_system.dto.response.report.RevenueAggregateDTO;
+import com.example.smart_booking_system.dto.response.report.BookingDetailReportDTO;
 import com.example.smart_booking_system.entity.Booking;
 import com.example.smart_booking_system.repository.BookingRepository;
+import com.example.smart_booking_system.repository.PropertyRepository;
 import com.example.smart_booking_system.security.CustomUserDetails;
 import com.example.smart_booking_system.service.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +14,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -28,6 +27,7 @@ public class ReportController {
 
     private final ReportService reportService;
     private final BookingRepository bookingRepository;
+    private final PropertyRepository propertyRepository;
 
     @GetMapping("/owner/revenue")
     @PreAuthorize("hasRole('OWNER')")
@@ -42,91 +42,84 @@ public class ReportController {
         try {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
-            LocalDate today = LocalDate.now();
 
-            // ✅ XỬ LÝ CHUYỂN "ALL" THÀNH NULL
+            // 1. Xử lý PropertyId và lấy tên cơ sở lưu trú
             Integer parsedPropertyId = null;
+            String propertyNameStr = "Tất cả cơ sở lưu trú";
+
             if (!"ALL".equalsIgnoreCase(propertyId)) {
                 parsedPropertyId = Integer.parseInt(propertyId);
+                propertyNameStr = propertyRepository.findById(parsedPropertyId)
+                        .map(com.example.smart_booking_system.entity.Property::getPropertyName)
+                        .orElse("Không xác định");
             }
 
-            // SỬ DỤNG HÀM MỚI Ở REPOSITORY
+            // 2. Lấy dữ liệu Booking
             List<Booking> bookings = bookingRepository.findBookingsForRevenueReportWithProperty(
                     currentUser.getUserId(), parsedPropertyId, start, end);
 
-            // 2. Gom nhóm dữ liệu dựa theo reportType
-            List<RevenueAggregateDTO> reportData = new ArrayList<>();
-            String templateName = "";
+            List<BookingDetailReportDTO> reportData = new ArrayList<>();
+            String templateName = "owner_revenue_detailed";
+            String reportTitle = "";
 
-            if ("DAILY".equalsIgnoreCase(reportType)) {
-                templateName = "owner_revenue_daily";
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-                Map<LocalDate, List<Booking>> dailyMap = bookings.stream()
-                        .filter(b -> b.getCheckInDate() != null)
-                        .collect(Collectors.groupingBy(Booking::getCheckInDate));
+            // 3. Map dữ liệu sang DTO chi tiết
+            for (Booking b : bookings) {
+                String period = "";
+                if ("DAILY".equalsIgnoreCase(reportType)) {
+                    reportTitle = "BÁO CÁO DOANH THU THEO NGÀY";
+                    period = b.getCheckInDate() != null ? b.getCheckInDate().format(dateFmt) : "";
+                } else if ("MONTHLY".equalsIgnoreCase(reportType)) {
+                    reportTitle = "BÁO CÁO DOANH THU THEO THÁNG";
+                    period = b.getCheckInDate() != null ? YearMonth.from(b.getCheckInDate()).format(DateTimeFormatter.ofPattern("MM/yyyy")) : "";
+                } else if ("YEARLY".equalsIgnoreCase(reportType)) {
+                    reportTitle = "BÁO CÁO DOANH THU THEO NĂM";
+                    period = b.getCheckInDate() != null ? String.valueOf(b.getCheckInDate().getYear()) : "";
+                }
 
-                reportData = dailyMap.entrySet().stream().sorted(Map.Entry.comparingByKey())
-                        .map(e -> new RevenueAggregateDTO(
-                                e.getKey().format(fmt),
-                                e.getValue().size(),
-                                e.getValue().stream().mapToDouble(b -> b.getTotalPrice().doubleValue()).sum()))
-                        .collect(Collectors.toList());
+                // Cập nhật lấy theo trường khách nhập tay trong entity Booking của bạn
+                String custName = b.getCustomerName() != null ? b.getCustomerName() :
+                        (b.getUser() != null ? b.getUser().getFullName() : "Khách lẻ");
 
-            } else if ("MONTHLY".equalsIgnoreCase(reportType)) {
-                templateName = "owner_revenue_monthly";
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/yyyy");
+                String email = b.getCustomerEmail() != null ? b.getCustomerEmail() :
+                        (b.getUser() != null ? b.getUser().getEmail() : "Không có");
 
-                Map<YearMonth, List<Booking>> monthlyMap = bookings.stream()
-                        .filter(b -> b.getCheckInDate() != null)
-                        .collect(Collectors.groupingBy(b -> YearMonth.from(b.getCheckInDate())));
+                String created = b.getCreatedAt() != null ? b.getCreatedAt().format(timeFmt) : "";
+                String checkIn = b.getCheckInDate() != null ? b.getCheckInDate().format(dateFmt) : "";
+                String status = b.getStatus() != null ? b.getStatus().name() : "";
 
-                reportData = monthlyMap.entrySet().stream().sorted(Map.Entry.comparingByKey())
-                        .map(e -> new RevenueAggregateDTO(
-                                e.getKey().format(fmt),
-                                e.getValue().size(),
-                                e.getValue().stream().mapToDouble(b -> b.getTotalPrice().doubleValue()).sum()))
-                        .collect(Collectors.toList());
+                // Lấy tên Cơ sở lưu trú của từng Booking
+                String bookingPropertyName = (b.getProperty() != null && b.getProperty().getPropertyName() != null)
+                        ? b.getProperty().getPropertyName() : "Không xác định";
 
-            } else if ("YEARLY".equalsIgnoreCase(reportType)) {
-                templateName = "owner_revenue_yearly";
+                Double price = b.getTotalPrice() != null ? b.getTotalPrice().doubleValue() : 0.0;
 
-                Map<Integer, List<Booking>> yearlyMap = bookings.stream()
-                        .filter(b -> b.getCheckInDate() != null)
-                        .collect(Collectors.groupingBy(b -> b.getCheckInDate().getYear()));
-
-                reportData = yearlyMap.entrySet().stream().sorted(Map.Entry.comparingByKey())
-                        .map(e -> new RevenueAggregateDTO(
-                                String.valueOf(e.getKey()),
-                                e.getValue().size(),
-                                e.getValue().stream().mapToDouble(b -> b.getTotalPrice().doubleValue()).sum()))
-                        .collect(Collectors.toList());
+                // Đưa vào DTO 8 tham số
+                reportData.add(new BookingDetailReportDTO(period, custName, email, created, checkIn, status, bookingPropertyName, price));
             }
 
             if (reportData.isEmpty()) {
-                reportData.add(new RevenueAggregateDTO("Không có dữ liệu", 0, 0.0));
+                reportData.add(new BookingDetailReportDTO("N/A", "Không có dữ liệu", "-", "-", "-", "-", "-", 0.0));
             }
 
-            // 3. Tính toán Snapshot Tóm tắt
-            long newOrdersToday = bookings.stream().filter(b -> b.getCreatedAt() != null && b.getCreatedAt().toLocalDate().isEqual(today)).count();
-            double todayRevenue = bookings.stream().filter(b -> b.getCheckInDate() != null && b.getCheckInDate().isEqual(today)).mapToDouble(b -> b.getTotalPrice().doubleValue()).sum();
-            double totalCumulativeRevenue = reportData.stream().filter(r -> !r.getPeriod().equals("Không có dữ liệu")).mapToDouble(RevenueAggregateDTO::getTotalRevenue).sum();
-
-            // 4. Đưa vào Parameters cho File Report
+            // 4. Truyền parameters cho Header (Thêm propertyName)
             Map<String, Object> parameters = new HashMap<>();
+            parameters.put("systemName", "TRIPIFY PARTNER");
+            parameters.put("reportTitle", reportTitle);
             parameters.put("ownerName", currentUser.getFullName());
-            parameters.put("reportDate", start.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " đến " + end.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            parameters.put("propertyName", propertyNameStr);
+            parameters.put("reportPeriod", "Từ ngày " + start.format(dateFmt) + " đến " + end.format(dateFmt));
+            parameters.put("reportId", "REP-" + System.currentTimeMillis());
             parameters.put("generationTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
-            parameters.put("totalCumulativeRevenue", totalCumulativeRevenue);
-            parameters.put("todayRevenue", todayRevenue);
-            parameters.put("newOrdersToday", (int) newOrdersToday);
 
-            // 5. Xuất file
+            // 5. Sinh file báo cáo
             byte[] reportBytes = reportService.generateReport(templateName, parameters, reportData, format);
 
             HttpHeaders headers = new HttpHeaders();
             String extension = format.equalsIgnoreCase("excel") ? "xlsx" : "pdf";
-            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Doanh_Thu_" + reportType + "_" + currentUser.getUserId() + "." + extension);
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Bao_Cao_" + reportType + "_" + currentUser.getUserId() + "." + extension);
 
             MediaType mediaType = format.equalsIgnoreCase("excel")
                     ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

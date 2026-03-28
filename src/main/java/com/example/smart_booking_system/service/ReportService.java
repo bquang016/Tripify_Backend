@@ -19,15 +19,13 @@ public class ReportService {
 
     public byte[] generateReport(String templateName, Map<String, Object> parameters, List<?> data, String format) throws Exception {
 
-        // SỬA Ở ĐÂY: Dùng ClassPathResource.getInputStream() để đọc file trong cả file .jar
+        // ĐỌC FILE BẰNG INPUT STREAM
         InputStream reportStream = new ClassPathResource("reports/" + templateName + ".jrxml").getInputStream();
         JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
 
-        // 2. Map dữ liệu vào báo cáo
         JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(data);
         JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
 
-        // 3. Xuất file tùy theo định dạng
         if ("pdf".equalsIgnoreCase(format)) {
             return JasperExportManager.exportReportToPdf(jasperPrint);
         } else if ("excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format)) {
