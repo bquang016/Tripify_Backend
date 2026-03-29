@@ -149,11 +149,8 @@ public class ReportController {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
 
-            // Lấy TẤT CẢ booking thành công của toàn hệ thống trong khoảng thời gian
-            List<Booking> bookings = bookingRepository.findAll().stream()
-                    .filter(b -> !b.getCheckInDate().isBefore(start) && !b.getCheckInDate().isAfter(end))
-                    .filter(b -> b.getStatus().name().equals("CONFIRMED") || b.getStatus().name().equals("COMPLETED"))
-                    .toList();
+            // ✅ Thay đổi: Kéo dữ liệu đã được lọc trực tiếp từ Database thay vì findAll()
+            List<Booking> bookings = bookingRepository.findAdminBookingsForRevenueReport(start, end);
 
             DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             String reportTitle = "BÁO CÁO DOANH THU SÀN THEO " +
@@ -181,7 +178,7 @@ public class ReportController {
                 String period = keys[0];
 
                 List<Booking> group = entry.getValue();
-                Booking firstBooking = group.get(0); // Lấy đại diện để lấy thông tin Owner
+                Booking firstBooking = group.get(0);
 
                 String ownerName = firstBooking.getProperty().getOwner().getFullName();
                 String ownerEmail = firstBooking.getProperty().getOwner().getEmail();
@@ -201,9 +198,9 @@ public class ReportController {
                 reportData.add(new AdminRevenueReportDTO("N/A", "Không có dữ liệu", "-", 0, 0.0, 0.0, 0.0));
             }
 
-            // Truyền tham số cho Header
+            // Truyền tham số cho Header (Đã khớp với file admin_revenue_detailed.jrxml)
             Map<String, Object> parameters = new HashMap<>();
-            parameters.put("systemName", "Tripify");
+            parameters.put("systemName", "Tripify Admin Portal");
             parameters.put("reportTitle", reportTitle);
             parameters.put("reportPeriod", "Từ ngày " + start.format(dateFmt) + " đến " + end.format(dateFmt));
             parameters.put("reportId", "ADM-REV-" + System.currentTimeMillis());

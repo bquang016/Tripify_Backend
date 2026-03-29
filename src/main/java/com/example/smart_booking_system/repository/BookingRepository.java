@@ -326,13 +326,36 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
 
     // ========================================================================
+    // QUERIES CHO XUẤT BÁO CÁO (REPORT) ADMIN
+    // ========================================================================
+
+    // ✅ TỐI ƯU BÁO CÁO 1: Lọc thời gian trực tiếp dưới database + JOIN FETCH để tránh lỗi N+1 query
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.property p JOIN FETCH p.owner o " +
+            "WHERE b.checkInDate >= :startDate AND b.checkInDate <= :endDate " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED)")
+    List<Booking> findAdminBookingsForRevenueReport(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // ========================================================================
     // BÁO CÁO HIỆU SUẤT KHU VỰC (DASHBOARD)
     // ========================================================================
-    @Query("SELECT b.property.city, COUNT(DISTINCT b.property.propertyId), COUNT(b), COALESCE(SUM(b.totalPrice), 0) " +
-            "FROM Booking b " +
-            "WHERE b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
-            "GROUP BY b.property.city " +
-            "ORDER BY SUM(b.totalPrice) DESC")
+
+    // ✅ FIX BÁO CÁO 2: Dùng LEFT JOIN từ Property để đếm ĐÚNG TỔNG SỐ CƠ SỞ ở khu vực đó
+    // kể cả những cơ sở chưa từng có ai đặt phòng.
+    @Query("SELECT p.city, " +
+            "COUNT(DISTINCT p.propertyId) as totalProperties, " +
+            "COUNT(b.bookingId) as totalBookings, " +
+            "COALESCE(SUM(b.totalPrice), 0) as totalRevenue " +
+            "FROM Property p " +
+            "LEFT JOIN Booking b ON b.property.propertyId = p.propertyId " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
+            "GROUP BY p.city " +
+            "ORDER BY COALESCE(SUM(b.totalPrice), 0) DESC")
     List<Object[]> getRegionalPerformanceForAdmin();
 
 
