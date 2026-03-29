@@ -119,7 +119,7 @@ public class AdminApplicationController {
             if (typeData != null) {
                 for (Object[] obj : typeData) {
                     revenueByType.add(new DashboardDataDTO.PieChartData(
-                            obj[0].toString(),
+                            obj[0] != null ? obj[0].toString() : "Khác",
                             (Number) obj[1]
                     ));
                 }
@@ -149,6 +149,26 @@ public class AdminApplicationController {
                             .build())
                     .toList();
 
+            // =========================================================
+            // MỚI THÊM: LẤY DỮ LIỆU BÁO CÁO HIỆU SUẤT KHU VỰC
+            // =========================================================
+            List<Object[]> regionalDataRaw = bookingRepo.getRegionalPerformanceForAdmin();
+            List<DashboardDataDTO.RegionalStatDTO> regionalStats = new ArrayList<>();
+
+            if (regionalDataRaw != null) {
+                for (Object[] row : regionalDataRaw) {
+                    String rowCity = row[0] != null ? row[0].toString() : "Không xác định";
+                    Integer propertiesCount = row[1] != null ? ((Number) row[1]).intValue() : 0;
+                    Integer bookingsCount = row[2] != null ? ((Number) row[2]).intValue() : 0;
+                    Double cityRevenue = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+
+                    regionalStats.add(new DashboardDataDTO.RegionalStatDTO(rowCity, propertiesCount, bookingsCount, cityRevenue));
+                }
+            }
+
+            // =========================================================
+            // BUILD ĐỐI TƯỢNG DTO CUỐI CÙNG TRẢ VỀ FRONTEND
+            // =========================================================
             DashboardDataDTO stats = DashboardDataDTO.builder()
                     .totalRevenue(revenue != null ? revenue : BigDecimal.ZERO)
                     .totalUsers(users)
@@ -160,6 +180,7 @@ public class AdminApplicationController {
                     .revenueByType(revenueByType)
                     .topHotels(topHotels)
                     .recentBookings(recentBookings)
+                    .regionalStats(regionalStats) // <-- Chèn biến mới vào đây
                     .build();
 
             return ResponseEntity.ok(ApiResponse.success("Lấy thống kê Dashboard thành công", stats));
