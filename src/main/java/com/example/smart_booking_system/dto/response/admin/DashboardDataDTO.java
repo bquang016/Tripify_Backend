@@ -28,6 +28,7 @@ public class DashboardDataDTO {
     // 3. Danh sách (Lists/Tables)
     private List<TopHotelDTO> topHotels;       // ✅ Sửa lỗi: AdminController cần class này
     private List<RecentBookingDTO> recentBookings;
+    private List<RegionalStatDTO> regionalStats;
 
     // --- Inner Classes cho cấu trúc con ---
     @Data
@@ -67,5 +68,15 @@ public class DashboardDataDTO {
         private BigDecimal price;
         private String status;
         private String date;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class RegionalStatDTO {
+        private String city;
+        private Integer totalProperties;
+        private Integer totalBookings;
+        private Double totalRevenue;
     }
 }

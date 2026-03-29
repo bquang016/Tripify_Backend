@@ -1,5 +1,6 @@
 package com.example.smart_booking_system.controller;
 
+import com.example.smart_booking_system.dto.response.report.AdminRevenueReportDTO;
 import com.example.smart_booking_system.dto.response.report.BookingDetailReportDTO;
 import com.example.smart_booking_system.entity.Booking;
 import com.example.smart_booking_system.repository.BookingRepository;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -125,6 +127,96 @@ public class ReportController {
                     ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                     : MediaType.APPLICATION_PDF;
             headers.setContentType(mediaType);
+
+            return ResponseEntity.ok().headers(headers).body(reportBytes);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/admin/revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<byte[]> downloadAdminRevenue(
+            @RequestParam String format,
+            @RequestParam String reportType,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        try {
+            LocalDate start = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
+
+            // Lấy TẤT CẢ booking thành công của toàn hệ thống trong khoảng thời gian
+            List<Booking> bookings = bookingRepository.findAll().stream()
+                    .filter(b -> !b.getCheckInDate().isBefore(start) && !b.getCheckInDate().isAfter(end))
+                    .filter(b -> b.getStatus().name().equals("CONFIRMED") || b.getStatus().name().equals("COMPLETED"))
+                    .toList();
+
+            DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String reportTitle = "BÁO CÁO DOANH THU SÀN THEO " +
+                    (reportType.equals("DAILY") ? "NGÀY" : reportType.equals("MONTHLY") ? "THÁNG" : "NĂM");
+
+            // Gom nhóm Booking theo: Chu kỳ thời gian + Owner ID
+            Map<String, List<Booking>> groupedBookings = bookings.stream().collect(Collectors.groupingBy(b -> {
+                String periodStr = "";
+                if ("DAILY".equalsIgnoreCase(reportType)) {
+                    periodStr = b.getCheckInDate().format(dateFmt);
+                } else if ("MONTHLY".equalsIgnoreCase(reportType)) {
+                    periodStr = YearMonth.from(b.getCheckInDate()).format(DateTimeFormatter.ofPattern("MM/yyyy"));
+                } else {
+                    periodStr = String.valueOf(b.getCheckInDate().getYear());
+                }
+                String ownerId = b.getProperty().getOwner().getUserId();
+                return periodStr + "|" + ownerId;
+            }));
+
+            List<AdminRevenueReportDTO> reportData = new ArrayList<>();
+
+            // Tính toán tổng số cho từng nhóm
+            for (Map.Entry<String, List<Booking>> entry : groupedBookings.entrySet()) {
+                String[] keys = entry.getKey().split("\\|");
+                String period = keys[0];
+
+                List<Booking> group = entry.getValue();
+                Booking firstBooking = group.get(0); // Lấy đại diện để lấy thông tin Owner
+
+                String ownerName = firstBooking.getProperty().getOwner().getFullName();
+                String ownerEmail = firstBooking.getProperty().getOwner().getEmail();
+
+                int totalBookings = group.size();
+                double grossRevenue = group.stream().mapToDouble(b -> b.getTotalPrice().doubleValue()).sum();
+                double platformFee = grossRevenue * 0.15; // Phí sàn 15%
+                double ownerPayout = grossRevenue * 0.85; // Tiền trả cho chủ CS 85%
+
+                reportData.add(new AdminRevenueReportDTO(period, ownerName, ownerEmail, totalBookings, grossRevenue, platformFee, ownerPayout));
+            }
+
+            // Sắp xếp báo cáo theo thời gian
+            reportData.sort(Comparator.comparing(AdminRevenueReportDTO::getPeriod));
+
+            if (reportData.isEmpty()) {
+                reportData.add(new AdminRevenueReportDTO("N/A", "Không có dữ liệu", "-", 0, 0.0, 0.0, 0.0));
+            }
+
+            // Truyền tham số cho Header
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("systemName", "Tripify");
+            parameters.put("reportTitle", reportTitle);
+            parameters.put("reportPeriod", "Từ ngày " + start.format(dateFmt) + " đến " + end.format(dateFmt));
+            parameters.put("reportId", "ADM-REV-" + System.currentTimeMillis());
+            parameters.put("generationTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+            parameters.put("generatedBy", currentUser.getFullName());
+
+            byte[] reportBytes = reportService.generateReport("admin_revenue_detailed", parameters, reportData, format);
+
+            HttpHeaders headers = new HttpHeaders();
+            String extension = format.equalsIgnoreCase("excel") ? "xlsx" : "pdf";
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Admin_DoanhThu_" + reportType + "." + extension);
+            headers.setContentType(format.equalsIgnoreCase("excel") ?
+                    MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") : MediaType.APPLICATION_PDF);
 
             return ResponseEntity.ok().headers(headers).body(reportBytes);
 

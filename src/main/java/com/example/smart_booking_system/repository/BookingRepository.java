@@ -325,4 +325,15 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     List<Object[]> getRevenueByPropertyTypeByOwner(@Param("ownerId") String ownerId);
 
 
+    // ========================================================================
+    // BÁO CÁO HIỆU SUẤT KHU VỰC (DASHBOARD)
+    // ========================================================================
+    @Query("SELECT b.property.city, COUNT(DISTINCT b.property.propertyId), COUNT(b), COALESCE(SUM(b.totalPrice), 0) " +
+            "FROM Booking b " +
+            "WHERE b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
+            "GROUP BY b.property.city " +
+            "ORDER BY SUM(b.totalPrice) DESC")
+    List<Object[]> getRegionalPerformanceForAdmin();
+
+
 }
