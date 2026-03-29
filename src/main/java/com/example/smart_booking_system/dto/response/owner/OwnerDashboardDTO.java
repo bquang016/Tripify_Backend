@@ -43,16 +43,18 @@ public class OwnerDashboardDTO {
     public static class PieChartData {
         private String name;
         private Number value;
+        private Number count;
     }
 
     @Data
     @Builder
     public static class ReviewDTO {
-        private int id;
+        private Integer id;
         private String user;
-        private double rating; // Để double cho linh hoạt
+        private Integer rating;
         private String text;
         private String date;
+        private String reply;
     }
 
     @Data

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="owner_revenue_detailed" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-1234-56789abcdef0">
+
+    <parameter name="systemName" class="java.lang.String"/>
+    <parameter name="reportTitle" class="java.lang.String"/>
+    <parameter name="ownerName" class="java.lang.String"/>
+    <parameter name="propertyName" class="java.lang.String"/>
+    <parameter name="reportPeriod" class="java.lang.String"/>
+    <parameter name="reportId" class="java.lang.String"/>
+    <parameter name="generationTime" class="java.lang.String"/>
+
+    <field name="period" class="java.lang.String"/>
+    <field name="customerName" class="java.lang.String"/>
+    <field name="email" class="java.lang.String"/>
+    <field name="createdDate" class="java.lang.String"/>
+    <field name="checkInDate" class="java.lang.String"/>
+    <field name="status" class="java.lang.String"/>
+    <field name="propertyName" class="java.lang.String"/>
+    <field name="totalPrice" class="java.lang.Double"/>
+
+    <title>
+        <band height="158">
+            <textField>
+                <reportElement x="0" y="0" width="802" height="20" uuid="b9f5b61e-1234-4001-a001-123456789001"/>
+                <textElement><font fontName="DejaVu Sans" size="12" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["HỆ THỐNG: " + $P{systemName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="25" width="802" height="25" uuid="b9f5b61e-1234-4001-a001-123456789002"/>
+                <textElement textAlignment="Center"><font fontName="DejaVu Sans" size="16" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{reportTitle}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="55" width="802" height="18" uuid="b9f5b61e-1234-4001-a001-123456789003"/>
+                <textElement><font fontName="DejaVu Sans" size="11" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["Chủ sở hữu: " + $P{ownerName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="73" width="802" height="18" uuid="b9f5b61e-1234-4001-a001-123456789010"/>
+                <textElement><font fontName="DejaVu Sans" size="11" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["Cơ sở lưu trú (Bộ lọc): " + $P{propertyName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="91" width="802" height="18" uuid="b9f5b61e-1234-4001-a001-123456789004"/>
+                <textElement><font fontName="DejaVu Sans" size="11" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["Khoảng thời gian: " + $P{reportPeriod}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="109" width="802" height="18" uuid="b9f5b61e-1234-4001-a001-123456789005"/>
+                <textElement><font fontName="DejaVu Sans" size="11" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["ID báo cáo: " + $P{reportId}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="127" width="802" height="18" uuid="b9f5b61e-1234-4001-a001-123456789006"/>
+                <textElement><font fontName="DejaVu Sans" size="11" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA["Thời gian xuất báo cáo: " + $P{generationTime}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25">
+            <staticText>
+                <reportElement x="0" y="0" width="75" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789001"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Thời gian]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="75" y="0" width="115" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789002"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Tên khách hàng]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="190" y="0" width="130" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789003"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Email]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="320" y="0" width="100" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789004"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Ngày tạo đơn]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="420" y="0" width="75" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789005"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Check-in]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="495" y="0" width="90" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789006"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Trạng thái]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="585" y="0" width="125" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789008"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Cơ sở lưu trú]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="710" y="0" width="92" height="25" backcolor="#E2E8F0" mode="Opaque" uuid="c9f5b61e-1234-4001-a001-123456789007"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <text><![CDATA[Số tiền (VND)]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="25">
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="75" height="25" uuid="d9f5b61e-1234-4001-a001-123456789001"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{period}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="75" y="0" width="115" height="25" uuid="d9f5b61e-1234-4001-a001-123456789002"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{customerName}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="190" y="0" width="130" height="25" uuid="d9f5b61e-1234-4001-a001-123456789003"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{email}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="320" y="0" width="100" height="25" uuid="d9f5b61e-1234-4001-a001-123456789004"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{createdDate}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="420" y="0" width="75" height="25" uuid="d9f5b61e-1234-4001-a001-123456789005"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{checkInDate}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="495" y="0" width="90" height="25" uuid="d9f5b61e-1234-4001-a001-123456789006"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="585" y="0" width="125" height="25" uuid="d9f5b61e-1234-4001-a001-123456789008"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{propertyName}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="710" y="0" width="92" height="25" uuid="d9f5b61e-1234-4001-a001-123456789007"/>
+                <box leftPadding="5" rightPadding="5"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font fontName="DejaVu Sans" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/></textElement>
+                <textFieldExpression><![CDATA[$F{totalPrice}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>
