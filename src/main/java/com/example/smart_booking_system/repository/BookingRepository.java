@@ -168,13 +168,6 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     @Query("SELECT b FROM Booking b WHERE b.property.owner.userId = :ownerId ORDER BY b.createdAt DESC LIMIT 10")
     List<Booking> findRecentBookingsByOwner(@Param("ownerId") String ownerId);
 
-    // 9. Cơ cấu doanh thu theo loại hình
-    @Query("SELECT b.property.propertyType, SUM(b.totalPrice) " +
-            "FROM Booking b " +
-            "WHERE b.property.owner.userId = :ownerId " +
-            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
-            "GROUP BY b.property.propertyType")
-    List<Object[]> getRevenueByPropertyTypeByOwner(@Param("ownerId") String ownerId);
 
     // ==============================
 // ADMIN DASHBOARD FILTER QUERIES
@@ -291,5 +284,79 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    // ========================================================================
+    // QUERIES CHO XUẤT BÁO CÁO (REPORT)
+    // ========================================================================
+    @Query("SELECT b FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND b.checkInDate >= :startDate " +
+            "AND b.checkInDate <= :endDate " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.CHECKED_IN, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED)")
+    List<Booking> findBookingsForRevenueReport(
+            @Param("ownerId") String ownerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT b FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND (:propertyId IS NULL OR b.property.propertyId = :propertyId) " + // ✅ Đổi thành IS NULL
+            "AND b.checkInDate >= :startDate " +
+            "AND b.checkInDate <= :endDate " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.CHECKED_IN, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED)")
+    List<Booking> findBookingsForRevenueReportWithProperty(
+            @Param("ownerId") String ownerId,
+            @Param("propertyId") Integer propertyId, // ✅ Đổi kiểu dữ liệu thành Integer
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // 9. Cơ cấu doanh thu và hiệu suất theo loại hình
+    @Query("SELECT b.property.propertyType, SUM(b.totalPrice), COUNT(b) " +
+            "FROM Booking b " +
+            "WHERE b.property.owner.userId = :ownerId " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
+            "GROUP BY b.property.propertyType")
+    List<Object[]> getRevenueByPropertyTypeByOwner(@Param("ownerId") String ownerId);
+
+
+    // ========================================================================
+    // QUERIES CHO XUẤT BÁO CÁO (REPORT) ADMIN
+    // ========================================================================
+
+    // ✅ TỐI ƯU BÁO CÁO 1: Lọc thời gian trực tiếp dưới database + JOIN FETCH để tránh lỗi N+1 query
+    @Query("SELECT b FROM Booking b " +
+            "JOIN FETCH b.property p JOIN FETCH p.owner o " +
+            "WHERE b.checkInDate >= :startDate AND b.checkInDate <= :endDate " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED)")
+    List<Booking> findAdminBookingsForRevenueReport(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    // ========================================================================
+    // BÁO CÁO HIỆU SUẤT KHU VỰC (DASHBOARD)
+    // ========================================================================
+
+    // ✅ FIX BÁO CÁO 2: Dùng LEFT JOIN từ Property để đếm ĐÚNG TỔNG SỐ CƠ SỞ ở khu vực đó
+    // kể cả những cơ sở chưa từng có ai đặt phòng.
+    @Query("SELECT p.city, " +
+            "COUNT(DISTINCT p.propertyId) as totalProperties, " +
+            "COUNT(b.bookingId) as totalBookings, " +
+            "COALESCE(SUM(b.totalPrice), 0) as totalRevenue " +
+            "FROM Property p " +
+            "LEFT JOIN Booking b ON b.property.propertyId = p.propertyId " +
+            "AND b.status IN (com.example.smart_booking_system.enums.BookingStatus.CONFIRMED, " +
+            "                 com.example.smart_booking_system.enums.BookingStatus.COMPLETED) " +
+            "GROUP BY p.city " +
+            "ORDER BY COALESCE(SUM(b.totalPrice), 0) DESC")
+    List<Object[]> getRegionalPerformanceForAdmin();
+
 
 }
