@@ -18,22 +18,30 @@ public class AiController {
 
     private final AiService aiService;
 
-    // Sửa đổi phương thức chat trong AiController.java
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<ChatResponseDTO>> chat(
             @RequestBody ChatRequestDTO request,
-            @AuthenticationPrincipal CustomUserDetails currentUser,
-            @RequestHeader(value = "X-Guest-Id", required = false) String guestId // Frontend gửi lên một ID cố định lưu
-                                                                                  // ở localStorage
+            @AuthenticationPrincipal CustomUserDetails currentUser // Chỉ cần bắt User xịn
     ) {
         try {
-            String sessionId = (currentUser != null) ? currentUser.getUserId()
-                    : (guestId != null ? guestId : "default-guest-session");
+            // 1. CHẶN KHÁCH VÃNG LAI (Bảo mật 2 lớp cùng SecurityConfig)
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Vui lòng đăng nhập để sử dụng tính năng Chatbot AI."));
+            }
 
+            // 2. LẤY EMAIL HOẶC USER_ID LÀM SESSION CHO n8n
+            // (Tớ dùng getUserId() theo code cũ của bạn, bạn có thể đổi thành getEmail()
+            // nếu muốn)
+            String sessionId = currentUser.getUsername().toString();
+
+            // 3. GỌI SERVICE XỬ LÝ
             ChatResponseDTO aiResult = aiService.processChat(sessionId, request.getMessage());
 
             return ResponseEntity.ok(ApiResponse.success("AI trả lời thành công", aiResult));
+
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Lỗi xử lý AI: " + e.getMessage()));
         }
