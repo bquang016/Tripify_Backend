@@ -43,7 +43,7 @@ public class AiService {
                     .bodyValue(requestBody)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(30)) // QUAN TRỌNG: Đợi n8n tối đa 30s để tránh treo BE
+                    .timeout(Duration.ofSeconds(60)) // QUAN TRỌNG: Đợi n8n tối đa 30s để tránh treo BE
                     .block();
 
             // 3. Phân tích kết quả từ n8n trả về
