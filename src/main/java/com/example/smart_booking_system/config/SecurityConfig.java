@@ -64,8 +64,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        // Lưu ý: Nếu bạn chạy frontend ở port khác 5173, hãy thêm vào đây
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // ✅ THÊM CÁC TÊN MIỀN PRODUCTION CỦA BẠN VÀO ĐÂY
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://tripify.click",
+                "https://www.tripify.click",
+                "https://tripify-frontend-two.vercel.app" // Sửa lại đúng link Vercel của bạn nếu cần
+        ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
