@@ -2,6 +2,7 @@ package com.example.smart_booking_system.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -38,5 +39,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/ratingImage/**")
                 .addResourceLocations(resourceLocation + "ratingImage/");
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins(
+                        "https://tripify.click",
+                        "https://www.tripify.click", // BẮT BUỘC phải có cả bản www
+                        "https://tripify-frontend-cyan.vercel.app" // Thêm cả link Vercel để test
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }
