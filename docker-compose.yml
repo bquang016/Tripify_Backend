@@ -1,63 +1,28 @@
 version: '3.8'
 
 services:
+  db:
+    image: mysql:8.0
+    container_name: tripify_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tripify_db
+      MYSQL_ROOT_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
   backend:
     build: .
     container_name: travelmate_backend
+    depends_on:
+      - db
     ports:
       - "8386:8386"
-    environment:
-      # ==========================================
-      # 1. DATABASE (Supabase PostgreSQL)
-      # ==========================================
-      - SPRING_DATASOURCE_URL=${DB_URL}
-      - SPRING_DATASOURCE_USERNAME=${DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
-      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-
-      # ==========================================
-      # 2. CLOUDFLARE R2 (Lưu trữ ảnh)
-      # ==========================================
-      - R2_ACCESSKEYID=${R2_ACCESS_KEY}
-      - R2_SECRETKEY=${R2_SECRET_KEY}
-      - R2_BUCKET=${R2_BUCKET}
-      - R2_ENDPOINT=${R2_ENDPOINT}
-      - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN}
-
-      # ==========================================
-      # 3. GOOGLE LOGIN
-      # ==========================================
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI={baseUrl}/login/oauth2/code/google
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE=email,profile
-
-      # ==========================================
-      # 4. FACEBOOK LOGIN
-      # ==========================================
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID}
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET}
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_REDIRECT_URI={baseUrl}/login/oauth2/code/facebook
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_SCOPE=email,public_profile
-
-      # ==========================================
-      # 5. EMAIL CONFIGURATION (Gmail SMTP)
-      # ==========================================
-      - SPRING_MAIL_HOST=smtp.gmail.com
-      - SPRING_MAIL_PORT=587
-      - SPRING_MAIL_USERNAME=${MAIL_USERNAME}
-      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED=true
-
-      # ==========================================
-      # 6. AI GEMINI & JWT
-      # ==========================================
-      - GEMINI_API_KEY=${GEMINI_KEY}
-      - GEMINI_API_URL=${GEMINI_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=86400000
-
+    env_file:
+      - .env
     restart: unless-stopped
+
+volumes:
+  mysql_data:
