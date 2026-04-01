@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: tripify_db
-      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
     ports:
       - "3306:3306"
     volumes:
