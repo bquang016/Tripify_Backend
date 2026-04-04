@@ -48,7 +48,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return processOAuth2User(oAuth2UserRequest, oAuth2User);
         } catch (Exception ex) {
             ex.printStackTrace();
-            // ✅ ĐỔI THÀNH TIẾNG ANH KHÔNG DẤU HOẶC LẤY LỖI GỐC
             String msg = ex.getMessage() != null ? ex.getMessage() : "Unknown_NullPointerException";
             throw new InternalAuthenticationServiceException(msg, ex.getCause());
         }
@@ -56,115 +55,91 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private OAuth2User processOAuth2User(OAuth2UserRequest oAuth2UserRequest, OAuth2User oAuth2User) {
         String registrationId = oAuth2UserRequest.getClientRegistration().getRegistrationId();
+        AuthProvider provider = AuthProvider.valueOf(registrationId.toLowerCase());
 
-        AuthProvider provider;
-        try {
-            provider = AuthProvider.valueOf(registrationId.toLowerCase());
-        } catch (IllegalArgumentException e) {
-            throw new OAuth2AuthenticationException("Provider không hợp lệ: " + registrationId);
-        }
-
-        // ✅ LẤY INFO TRỰC TIẾP (BỎ CƠ CHẾ .toString() DỄ GÂY LỖI)
         OAuth2UserInfo oAuth2UserInfo;
         if (registrationId.equalsIgnoreCase("google")) {
             oAuth2UserInfo = new GoogleOAuth2UserInfo(oAuth2User.getAttributes());
         } else if (registrationId.equalsIgnoreCase("facebook")) {
             oAuth2UserInfo = new FacebookOAuth2UserInfo(oAuth2User.getAttributes());
         } else {
-            throw new OAuth2AuthenticationException("Không hỗ trợ đăng nhập: " + registrationId);
+            throw new OAuth2AuthenticationException("unsupported_provider");
         }
 
-        // ✅ LẤY COOKIE AN TOÀN TUYỆT ĐỐI CHỐNG NULL
+        // Lấy LINKING_TOKEN (kiểm tra xem có phải hành động liên kết từ Profile không)
         String linkingToken = null;
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            HttpServletRequest request = attributes.getRequest();
-            if (request != null && request.getCookies() != null) {
-                for (Cookie cookie : request.getCookies()) {
-                    if ("LINKING_TOKEN".equals(cookie.getName())) {
-                        linkingToken = cookie.getValue();
-                        break;
-                    }
+        if (attributes != null && attributes.getRequest().getCookies() != null) {
+            for (Cookie cookie : attributes.getRequest().getCookies()) {
+                if ("LINKING_TOKEN".equals(cookie.getName())) {
+                    linkingToken = cookie.getValue();
+                    break;
                 }
             }
         }
 
-        System.out.println("--- OAuth2 Flow Debug ---");
-        System.out.println("Email from Provider: " + oAuth2UserInfo.getEmail());
-        System.out.println("LINKING_TOKEN cookie: " + (linkingToken != null ? "FOUND" : "NOT FOUND"));
+        Optional<SocialAccount> existingSocial = socialAccountRepository.findByProviderAndProviderId(provider, oAuth2UserInfo.getId());
 
-        // ===== USE-CASE 3: CHỦ ĐỘNG LIÊN KẾT TÀI KHOẢN TỪ PROFILE =====
-        if (StringUtils.hasText(linkingToken)) {
-            if (jwtTokenProvider.validateToken(linkingToken)) {
-                String userId = jwtTokenProvider.getUserIdFromToken(linkingToken);
-                User currentUser = userRepository.findById(userId)
-                        .orElseThrow(() -> new OAuth2AuthenticationException("Không tìm thấy User để liên kết."));
+        // Xác định rõ Intent (Mục đích) của request này
+        boolean isLinkingIntent = StringUtils.hasText(linkingToken) && jwtTokenProvider.validateToken(linkingToken);
 
-                System.out.println("User ID from Token: " + userId);
+        if (isLinkingIntent) {
+            // ==========================================
+            // LUỒNG 1: NGƯỜI DÙNG CHỦ ĐỘNG LIÊN KẾT (TỪ PROFILE)
+            // ==========================================
+            String currentUserId = jwtTokenProvider.getUserIdFromToken(linkingToken);
+            User currentUser = userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new OAuth2AuthenticationException("user_not_found"));
 
-                // Kiểm tra xem providerId này đã bị ai khác chiếm chưa
-                Optional<SocialAccount> existingSocial = socialAccountRepository.findByProviderAndProviderId(provider, oAuth2UserInfo.getId());
-                if (existingSocial.isPresent() && !existingSocial.get().getUser().getUserId().equals(currentUser.getUserId())) {
-                    throw new OAuth2AuthenticationException("Tài khoản MXH này đã được liên kết với một người dùng khác!");
+            if (existingSocial.isPresent()) {
+                if (!existingSocial.get().getUser().getUserId().equals(currentUserId)) {
+                    // LỖI: Tài khoản MXH này đã gắn với người khác!
+                    throw new OAuth2AuthenticationException("account_already_linked");
                 }
-
-                // Thực hiện liên kết nếu chưa tồn tại
-                if (existingSocial.isEmpty()) {
-                    linkSocialAccount(currentUser, provider, oAuth2UserInfo);
-                    System.out.println(">> LINKING SUCCESSFUL for user: " + currentUser.getEmail());
-                }
+                // Đã liên kết với chính user này rồi -> Bỏ qua, cho đăng nhập lại session
                 return CustomUserDetails.create(currentUser, oAuth2User.getAttributes());
-            } else {
-                System.out.println(">> Invalid Linking Token!");
-                throw new OAuth2AuthenticationException("Phiên liên kết không hợp lệ hoặc đã hết hạn.");
-            }
-        }
-
-        // ===== USE-CASE 1 & 2: LOGIN / REGISTER BÌNH THƯỜNG =====
-        System.out.println(">> Normal Login/Register Flow");
-
-        Optional<SocialAccount> socialAccountOptional = socialAccountRepository.findByProviderAndProviderId(provider, oAuth2UserInfo.getId());
-
-        User user = null;
-
-        // BƯỚC 1: KIỂM TRA CHỐNG RÁC DỮ LIỆU
-        if (socialAccountOptional.isPresent()) {
-            SocialAccount sa = socialAccountOptional.get();
-
-            // Lấy User ra kiểm tra xem có thật không
-            if (sa.getUser() != null && sa.getUser().getUserId() != null) {
-                user = userRepository.findById(sa.getUser().getUserId()).orElse(null);
             }
 
-            // Nếu có Social Account nhưng User đã "bốc hơi" khỏi DB -> Xóa rác
-            if (user == null) {
-                System.out.println(">> Phát hiện bản ghi mồ côi. Đang tiến hành dọn rác...");
-                socialAccountRepository.delete(sa);
+            // Kiểm tra xem email MXH có bị trùng với một user khác trong hệ thống không
+            Optional<User> userWithSameEmail = userRepository.findByEmail(oAuth2UserInfo.getEmail());
+            if (userWithSameEmail.isPresent() && !userWithSameEmail.get().getUserId().equals(currentUserId)) {
+                throw new OAuth2AuthenticationException("email_used_by_another_user");
             }
-        }
 
-        // BƯỚC 2: XỬ LÝ (Nếu user vẫn null tức là chưa có hoặc rác vừa bị xóa)
-        if (user == null) {
+            linkSocialAccount(currentUser, provider, oAuth2UserInfo);
+            return CustomUserDetails.create(currentUser, oAuth2User.getAttributes());
+
+        } else {
+            // ==========================================
+            // LUỒNG 2: ĐĂNG NHẬP / ĐĂNG KÝ BÌNH THƯỜNG
+            // ==========================================
+            if (existingSocial.isPresent()) {
+                // Đã có tài khoản MXH -> Cho phép đăng nhập
+                User user = existingSocial.get().getUser();
+                if (user == null) {
+                    socialAccountRepository.delete(existingSocial.get());
+                    throw new OAuth2AuthenticationException("orphan_record_deleted_please_retry");
+                }
+                return CustomUserDetails.create(user, oAuth2User.getAttributes());
+            }
+
+            // Chưa có tài khoản MXH -> Kiểm tra Email để Đăng ký
             String email = oAuth2UserInfo.getEmail();
             if (!StringUtils.hasText(email)) {
                 email = oAuth2UserInfo.getId() + "@temp." + registrationId + ".com";
             }
 
-            Optional<User> userOptional = userRepository.findByEmail(email);
-            if (userOptional.isPresent()) {
-                // Gộp tài khoản (Use-case 2)
-                user = userOptional.get();
-                linkSocialAccount(user, provider, oAuth2UserInfo);
-                System.out.println(">> MERGE SUCCESSFUL for email: " + email);
-            } else {
-                // Tạo mới hoàn toàn (Use-case 1)
-                user = registerNewUser(oAuth2UserRequest, oAuth2UserInfo, email);
-                linkSocialAccount(user, provider, oAuth2UserInfo);
-                System.out.println(">> NEW USER REGISTERED: " + email);
-            }
-        }
+            Optional<User> existingUserByEmail = userRepository.findByEmail(email);
 
-        return CustomUserDetails.create(user, oAuth2User.getAttributes());
+            if (existingUserByEmail.isPresent()) {
+                throw new OAuth2AuthenticationException("email_exists_require_manual_link");
+            }
+
+            // Đăng ký mới hoàn toàn
+            User newUser = registerNewUser(oAuth2UserRequest, oAuth2UserInfo, email);
+            linkSocialAccount(newUser, provider, oAuth2UserInfo);
+            return CustomUserDetails.create(newUser, oAuth2User.getAttributes());
+        }
     }
 
     private void linkSocialAccount(User user, AuthProvider provider, OAuth2UserInfo oAuth2UserInfo) {
