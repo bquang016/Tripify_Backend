@@ -12,46 +12,34 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
+import java.nio.charset.StandardCharsets;
 
 import java.io.IOException;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    @Autowired
-    private JwtTokenProvider tokenProvider;
-
-    // Lấy URL Frontend từ biến môi trường
-    @Value("${app.frontend.url}")
-    private String frontendUrl;
+    @Autowired private JwtTokenProvider tokenProvider;
+    @Value("${app.frontend.url}") private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        String targetUrl = determineTargetUrl(request, response, authentication);
-
-        if (response.isCommitted()) {
-            return;
+        if (response.isCommitted()) return;
+        if (request.getCookies() != null) {
+            try { CookieUtils.deleteCookie(request, response, "LINKING_TOKEN"); } catch (Exception e) {}
         }
 
-        // Xóa Cookie LINKING_TOKEN
-        CookieUtils.deleteCookie(request, response, "LINKING_TOKEN");
-
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
-    }
-
-    @Override
-    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String token = tokenProvider.generateToken(authentication);
+        String action = "PENDING_EMAIL".equals(userDetails.getStatus()) ? "require_email" : "login_success";
 
-        // Sử dụng frontendUrl động thay vì localhost
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
-                .queryParam("token", token);
+        // ✅ THÊM ENCODE VÀO ĐÂY
+        String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
+                .queryParam("token", token)
+                .queryParam("action", action)
+                .encode(java.nio.charset.StandardCharsets.UTF_8)
+                .build().toUriString();
 
-        if ("PENDING_EMAIL".equals(userDetails.getStatus())) {
-            uriBuilder.queryParam("action", "require_email");
-        }
-
-        return uriBuilder.build().toUriString();
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

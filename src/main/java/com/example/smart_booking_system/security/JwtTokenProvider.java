@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${app.jwt.secret}")
+    @Value("${app.jwt.secret:mot_chuoi_secret_key_mac_dinh_dai_hon_256_bit_de_du_phong_cho_chac_an}")
     private String jwtSecret;
 
-    @Value("${app.jwt.expiration}")
+    @Value("${app.jwt.expiration:86400000}")
     private long jwtExpiration;
 
     /**
