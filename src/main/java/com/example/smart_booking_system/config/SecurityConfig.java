@@ -5,6 +5,7 @@ import com.example.smart_booking_system.security.JwtAuthenticationEntryPoint;
 import com.example.smart_booking_system.security.JwtAuthenticationFilter;
 // ✅ IMPORT MỚI
 import com.example.smart_booking_system.security.oauth2.CustomOAuth2UserService;
+import com.example.smart_booking_system.security.oauth2.OAuth2AuthenticationFailureHandler;
 import com.example.smart_booking_system.security.oauth2.OAuth2AuthenticationSuccessHandler;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -159,6 +161,7 @@ public class SecurityConfig {
                                 .userService(customOAuth2UserService) // Dùng service custom để lưu user vào DB
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler) // Dùng handler để tạo JWT và redirect về FE
+                        .failureHandler(oAuth2AuthenticationFailureHandler) // Dùng handler để trả lỗi về FE khi login thất bại
                 );
 
         http.authenticationProvider(authenticationProvider());
